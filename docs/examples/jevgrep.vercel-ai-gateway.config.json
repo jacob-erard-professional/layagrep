@@ -3,10 +3,10 @@
   "repository_root": "C:/work/example-repository",
   "remote_evaluation_enabled": false,
   "provider": {
-    "adapter": "typesafe-direct",
-    "base_url": "https://api.typesafe.ai",
-    "api_key_env": "TYPESAFE_API_KEY",
-    "model": "jev-1.13.0"
+    "adapter": "vercel-ai-gateway",
+    "base_url": "https://ai-gateway.vercel.sh",
+    "api_key_env": "AI_GATEWAY_API_KEY",
+    "model": "typesafe-ai/jev"
   },
   "search": {
     "deadline_ms": 60000,
