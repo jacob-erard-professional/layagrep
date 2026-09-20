@@ -1,19 +1,19 @@
 {
-  "name": "@nassim-arifette/jevgrep",
+  "name": "@nassim-arifette/layagrep",
   "version": "0.1.0",
-  "description": "Semantic code search for coding agents: evaluates authorized repository fragments with Jev and returns original excerpts under a response budget.",
+  "description": "Local semantic code search for coding agents, powered by Laya.",
   "type": "module",
   "license": "MIT",
   "author": "Nassim Arifette",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nassim-arifette/jevgrep.git"
+    "url": "git+https://github.com/jacob-erard-professional/layagrep.git"
   },
-  "homepage": "https://github.com/nassim-arifette/jevgrep#readme",
+  "homepage": "https://github.com/jacob-erard-professional/layagrep#readme",
   "bugs": {
-    "url": "https://github.com/nassim-arifette/jevgrep/issues"
+    "url": "https://github.com/jacob-erard-professional/layagrep/issues"
   },
-  "keywords": ["jev", "semantic-search", "code-search", "coding-agents", "mcp", "cli", "typesafe"],
+  "keywords": ["laya", "semantic-search", "code-search", "coding-agents", "mcp", "cli", "local-ai"],
   "publishConfig": {
     "access": "public"
   },
@@ -21,10 +21,11 @@
     "node": ">=24.0.0 <25.0.0"
   },
   "bin": {
-    "jevgrep": "dist/cli.js"
+    "layagrep": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "runtime"
   ],
   "scripts": {
     "build": "node node_modules/typescript/bin/tsc -p tsconfig.build.json && node scripts/make-executable.ts",
@@ -39,8 +40,6 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "4.0.87",
-    "ai": "7.0.107",
     "tiktoken": "1.0.22",
     "typescript-parser": "npm:typescript@6.0.2"
   }

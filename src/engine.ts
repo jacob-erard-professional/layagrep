@@ -1,5 +1,5 @@
 /**
- * The shared search engine (JG-014).
+ * The shared search engine (LG-014).
  *
  * One path — question, files, fragments, cache, evaluations, selection, freshness,
  * measured response — used by the CLI and by MCP alike (requirement R10). The
@@ -7,8 +7,8 @@
  *
  * Two stages are deliberately marked as seams for their owning issues, and both are
  * implemented here in their honest minimal form so the path is complete and testable:
- * `planScan` (JG-016: optional caps, reservations, rate card) and `runEvaluations`
- * (JG-017: batching, retries, cancellation). Filling them in must not add a second
+ * `planScan` (LG-016: optional caps, reservations, rate card) and `runEvaluations`
+ * (LG-017: batching, retries, cancellation). Filling them in must not add a second
  * engine; it replaces the body of one function.
  *
  * Invariants the engine is responsible for:
@@ -26,13 +26,13 @@ import {
 import type { ErrorCode, ScanCap, SearchOutcome, StopReason } from './contracts.ts';
 import { ConfigurationError, resolveCredential } from './config.ts';
 import type { LoadedConfiguration } from './config.ts';
-import { ScoreCache, evaluationIdentity, isPinnedModelRevision } from './evaluation/cache.ts';
+import { ScoreCache, evaluationIdentity } from './evaluation/cache.ts';
 import {
   CRITERION_VERSION, LAYOUT_VERSION, ProviderError, buildRequestPayload,
-} from './evaluation/jev.ts';
-import type { BatchItem, EvaluationBatch, ProviderClient } from './evaluation/jev.ts';
+} from './evaluation/laya.ts';
+import type { BatchItem, EvaluationBatch, ProviderClient } from './evaluation/laya.ts';
 import { createConfiguredProvider } from './evaluation/provider.ts';
-import { batchLimits, fitsSerializedBatch, isOpenRouterModelRevision, scoreCachePolicy, MAX_ROLLING_TTL_SECONDS, type BatchLimits } from './evaluation/policy.ts';
+import { batchLimits, fitsSerializedBatch, scoreCachePolicy, MAX_ROLLING_TTL_SECONDS, type BatchLimits } from './evaluation/policy.ts';
 import { runEvaluations } from './evaluation/scheduler.ts';
 import { SearchContext, SearchLogger, isAbortError, runPhase, systemClock } from './lifecycle.ts';
 import type { Clock } from './lifecycle.ts';
@@ -215,7 +215,7 @@ export class SearchEngine {
 
     // Cache lookup precedes planning and scheduling (specification section 6.3).
     const model = provider.model;
-    const adapter = config.provider.adapter ?? 'typesafe-direct';
+    const adapter = config.provider.adapter ?? 'laya-local';
     const cachePolicy = scoreCachePolicy(adapter, model, config.cache);
     const serialize = (batch: EvaluationBatch): string => provider.serializeBatch?.(batch) ?? JSON.stringify(buildRequestPayload(batch, model));
     const identityOf = (fragment: PreparedFragment, batchHash: string): string => evaluationIdentity({
@@ -338,11 +338,7 @@ export class SearchEngine {
               }
               scored.push({ fragment, score, fromCache: false });
               if (cachePolicy.mode !== 'disabled' && evaluation.requestedModel === model
-                && (evaluation.returnedModel === null || evaluation.returnedModel === model
-                  || (cachePolicy.mode === 'rolling' && adapter === 'typesafe-direct'
-                    && isPinnedModelRevision(evaluation.returnedModel))
-                  || (cachePolicy.mode === 'rolling' && adapter === 'openrouter'
-                    && isOpenRouterModelRevision(evaluation.returnedModel)))) {
+                && (evaluation.returnedModel === null || evaluation.returnedModel === model)) {
                 this.#cache.write(identities.get(fragment.id)!, score, {
                   modelRevision: model,
                   layout: LAYOUT_VERSION, criterion: CRITERION_VERSION, chunker: fragment.chunker,
@@ -586,7 +582,7 @@ type PlanOptions = {
 };
 
 /**
- * Plan the first attempts and account for the enabled caps (JG-016 seam).
+ * Plan the first attempts and account for the enabled caps (LG-016 seam).
  *
  * Every optional cap is disabled by default and stays disabled when it is `null`; no
  * built-in threshold substitutes for one. A plan that does not fit an enabled cap is

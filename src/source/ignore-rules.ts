@@ -1,5 +1,5 @@
 /**
- * `.gitignore` / `.jevgrepignore` pattern matching (part of JG-010).
+ * `.gitignore` / `.layagrepignore` pattern matching (part of LG-010).
  *
  * The specification asks for maintained ignore semantics and forbids shelling out to
  * Git. No ignore library could be pinned inside this offline package, so this module
@@ -29,7 +29,7 @@ export type IgnoreFile = {
   /** Directory the rules are anchored to, repository-relative with '/' separators ('' for the root). */
   readonly baseDirectory: string;
   readonly rules: readonly IgnoreRule[];
-  /** Negations are dropped for narrowing-only files such as `.jevgrepignore`. */
+  /** Negations are dropped for narrowing-only files such as `.layagrepignore`. */
   readonly narrowingOnly: boolean;
 };
 
@@ -127,7 +127,7 @@ export function parseIgnoreFile(text: string, baseDirectory: string, narrowingOn
 export type IgnoreDecision = {
   readonly ignored: boolean;
   readonly rule: string | null;
-  /** True when the decisive rule came from a narrowing-only file such as `.jevgrepignore`. */
+  /** True when the decisive rule came from a narrowing-only file such as `.layagrepignore`. */
   readonly narrowing: boolean;
 };
 

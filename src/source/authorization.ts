@@ -1,5 +1,5 @@
 /**
- * Rooted source access (JG-008). All inventory, ignore-file and content reads cross
+ * Rooted source access (LG-008). All inventory, ignore-file and content reads cross
  * this interface. A root identity is pinned for the loaded configuration's lifetime.
  * Checks narrow observable replacement races; they are not an atomic OS sandbox.
  */

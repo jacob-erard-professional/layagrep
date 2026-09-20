@@ -1,6 +1,6 @@
-# JG-003 synthetic repositories
+# LG-003 synthetic repositories
 
-These fixtures are original test data created for JevGrep. They contain no real
+These fixtures are original test data created for LayaGrep. They contain no real
 credentials or third-party source and are authorized for local and remote test
 evaluation.
 

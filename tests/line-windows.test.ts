@@ -13,7 +13,7 @@ import {
 import { countReferenceTokens } from '../src/response/token-counter.ts';
 
 /**
- * JG-012 - line-window chunking (specification 5.4, requirements R3 and R4).
+ * LG-012 - line-window chunking (specification 5.4, requirements R3 and R4).
  *
  * The seam is a pure function over one prepared snapshot: text in, windows out. No file
  * system, no scheduling, no provider - the same properties the plan asks the chunker to
@@ -228,17 +228,17 @@ test('windows carry the metadata the specification requires', () => {
   assert.equal(window.id.includes(window.path), true);
 });
 
-test('the default limits follow the specification values', () => {
+test('the default limits fit the local Laya state budget', () => {
   assert.deepEqual(DEFAULT_WINDOW_LIMITS, {
-    targetTokens: 800,
-    maxTokens: 1_600,
-    maxBytes: 8 * 1_024,
-    targetLines: 80,
-    maxLines: 120,
-    overlapLines: 8,
+    targetTokens: 80,
+    maxTokens: 100,
+    maxBytes: 1_536,
+    targetLines: 20,
+    maxLines: 32,
+    overlapLines: 4,
   });
   // The pinned vocabulary is installed locally; counting needs no provider credential.
-  assert.equal(process.env['JEVG_API_KEY'], undefined);
+  assert.equal(process.env['LAYAGREP_LOCAL_TOKEN'], undefined);
 });
 
 test('soft line and token targets shape windows before the hard maxima', () => {
@@ -394,7 +394,7 @@ test('the window invariants hold across limit profiles and source shapes', () =>
 });
 
 test('overlapping windows keep one file identity and never repeat a range', () => {
-  // JG-012 acceptance criterion 5: overlap must not duplicate the inventoried file, and the
+  // LG-012 acceptance criterion 5: overlap must not duplicate the inventoried file, and the
   // returned ranges must stay distinct. A caller can therefore group windows by path and
   // treat the group as one file, whatever the overlap policy did.
   const text = longSource(240);

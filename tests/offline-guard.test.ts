@@ -10,7 +10,7 @@ import { offlinePreloadUrl, sourceEntry, runCli } from './helpers/cli-runner.ts'
 import type { CliIo } from '../src/cli.ts';
 
 /**
- * Offline guard for JG-001: the ordinary test suite must run without a Jev key and
+ * Offline guard: the ordinary test suite must run without credentials and
  * without any provider call.
  *
  * In-process half: fetch, DNS lookup and every TCP connection attempt (which is also the

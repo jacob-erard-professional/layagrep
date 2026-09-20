@@ -8,7 +8,7 @@ import { CLI_EXIT_CODES } from '../src/search-response.ts';
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 /**
- * JG-023 process adapter: the binary must dispatch a validated command to the shared command
+ * LG-023 process adapter: the binary must dispatch a validated command to the shared command
  * layer instead of refusing it. These tests drive `main()` with the DEFAULT dependencies, so
  * they exercise the real wiring the executable uses - not an injected stub.
  *
@@ -84,7 +84,7 @@ test('inspect prints the eligible scope and its estimates, and takes no remote a
   assert.ok(payload.files !== undefined, 'inspect reports the file accounting');
 });
 
-test('a search without a credential is refused cleanly, with no provider request', async () => {
+test('a search reports an unavailable local Laya service cleanly', async () => {
   const workspace = createWorkspace({
     files: { 'src/cache.ts': 'export function clear(): void {}\n' },
     configure: (config) => withRemoteEnabled(config),
@@ -99,10 +99,10 @@ test('a search without a credential is refused cleanly, with no provider request
 
   // The canonical payload owns stdout, including a refusal: a pipeline keeps the evidence
   // even when the exit code is non-zero (specification 4.5).
-  assert.equal(code, CLI_EXIT_CODES.rejected);
-  const payload = JSON.parse(captured.stdout.join('\n')) as { status?: string; error?: { code?: string } };
-  assert.equal(payload.status, 'rejected');
-  assert.equal(payload.error?.code, 'CREDENTIAL_MISSING');
+  assert.equal(code, CLI_EXIT_CODES.error);
+  const payload = JSON.parse(captured.stdout.join('\n')) as { status?: string; report?: { stop_reasons: string[] } };
+  assert.equal(payload.status, 'error');
+  assert.ok(payload.report?.stop_reasons.includes('PROVIDER_UNAVAILABLE'));
   assert.doesNotMatch(captured.stderr.join('\n'), /\n\s+at /, 'no stack trace reaches the operator');
 });
 
@@ -120,7 +120,7 @@ test('cache clear on a configured workspace only removes the cache directory', a
 test('help and version keep working, and an unknown command stays a usage error', async () => {
   const help = capture();
   assert.equal(await main(['--help'], help.io), EXIT_OK);
-  assert.match(help.stdout.join('\n'), /^usage: jevgrep/);
+  assert.match(help.stdout.join('\n'), /^usage: layagrep/);
 
   const unknown = capture();
   assert.equal(await main(['frobnicate'], unknown.io), EXIT_USAGE);
@@ -137,7 +137,7 @@ test('cache clear touches only the configured cache, never the searched sources'
 
   const { mkdirSync, readFileSync, existsSync, writeFileSync } = await import('node:fs');
   const { createHash } = await import('node:crypto');
-  const cacheHome = workspace.env['JEVGREP_CACHE_HOME'] ?? '';
+  const cacheHome = workspace.env['LAYAGREP_CACHE_HOME'] ?? '';
   assert.ok(cacheHome.length > 0, 'the workspace must configure a cache home');
   // The configured cache lives under the cache home; a neighbour file is not part of it and
   // must survive, which is what "only the configured cache" means.

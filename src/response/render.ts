@@ -1,8 +1,8 @@
 /**
  * Report assembly and the measured response budget.
  *
- * JG-020 owns the final guarantee of specification section 8.2; this module provides
- * the measured rendering the first end-to-end path (JG-014) needs, with the same
+ * LG-020 owns the final guarantee of specification section 8.2; this module provides
+ * the measured rendering the first end-to-end path (LG-014) needs, with the same
  * rules, so that the engine never grows a second, weaker accounting:
  *
  * - a conservative envelope for the mandatory report is reserved *before* any paid

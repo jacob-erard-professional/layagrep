@@ -4,13 +4,13 @@ import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
 import { SearchContext } from '../src/lifecycle.ts';
 import { ManualClock } from '../src/testing/manual-clock.ts';
-import { ProviderError, type BatchEvaluation, type EvaluationBatch, type ProviderClient } from '../src/evaluation/jev.ts';
+import { ProviderError, type BatchEvaluation, type EvaluationBatch, type ProviderClient } from '../src/evaluation/laya.ts';
 import { runEvaluations } from '../src/evaluation/scheduler.ts';
 
 const batch: EvaluationBatch = { query: 'q', items: [{ id: 'a', path: 'a.ts', startLine: 1, endLine: 1, text: 'a();' }] };
 const answer: BatchEvaluation = {
   scores: new Map([['a', 0.9]]), invalid: [], usage: { inputTokens: 10, outputTokens: 0 },
-  requestedModel: 'jev-1.13.0', returnedModel: 'jev-1.13.0', transmittedBytes: 1, requestId: null,
+  requestedModel: 'convaiinnovations/laya', returnedModel: 'convaiinnovations/laya', transmittedBytes: 1, requestId: null,
 };
 function refusal(options: Partial<ConstructorParameters<typeof ProviderError>[0]> = {}): ProviderError {
   return new ProviderError({ code: 'PROVIDER_RATE_LIMIT', message: 'synthetic refusal', retryable: true, ambiguous: false, ...options });
@@ -23,7 +23,7 @@ test('each retry reserves a fresh attempt and honors Retry-After before resendin
   const failures: boolean[] = [];
   let reservations = 0;
   let scores = 0;
-  const provider: ProviderClient = { model: 'jev-1.13.0', async evaluateBatch() {
+  const provider: ProviderClient = { model: 'convaiinnovations/laya', async evaluateBatch() {
     times.push(clock.nowMs);
     if (times.length === 1) throw refusal({ retryAfterMs: 2_000 });
     return answer;
@@ -134,10 +134,10 @@ test('Retry-After pauses later batches even when retrying the refused batch is d
 test('a real CLI process stays alive during backoff and exits after retry cleanup', () => {
   const schedulerUrl = new URL('../src/evaluation/scheduler.ts', import.meta.url).href;
   const lifecycleUrl = new URL('../src/lifecycle.ts', import.meta.url).href;
-  const jevUrl = new URL('../src/evaluation/jev.ts', import.meta.url).href;
+  const layaUrl = new URL('../src/evaluation/laya.ts', import.meta.url).href;
   const script = `import { runEvaluations } from ${JSON.stringify(schedulerUrl)};
     import { SearchContext } from ${JSON.stringify(lifecycleUrl)};
-    import { ProviderError } from ${JSON.stringify(jevUrl)};
+    import { ProviderError } from ${JSON.stringify(layaUrl)};
     const context = new SearchContext(); let calls = 0;
     await runEvaluations({model:'test', async evaluateBatch() {
       if (++calls === 1) throw new ProviderError({code:'PROVIDER_RATE_LIMIT', message:'refused', retryable:true, ambiguous:false});

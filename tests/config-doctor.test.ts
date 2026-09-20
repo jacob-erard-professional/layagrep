@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -11,7 +11,7 @@ import {
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 /**
- * Trusted configuration and the local `doctor` state (JG-007).
+ * Trusted configuration and the local `doctor` state (LG-007).
  *
  * Everything here runs offline and without a credential: that is the point of the
  * issue. A repository must not be able to widen its own authorization, an optional
@@ -45,20 +45,25 @@ test('a generated configuration starts with remote evaluation disabled and every
   assert.equal(config.search.default_response_tokens, 4_000);
 });
 
-test('the configuration must live outside the repository it authorizes', () => {
+test('repository-local configuration is accepted only at .layagrep/config.json', () => {
   const space = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' } });
-  const inside = join(space.repositoryRoot, 'jevgrep.config.json');
-  writeFileSync(inside, `${JSON.stringify(createDefaultConfiguration(space.repositoryRoot.split('\\').join('/'), 'jev-1.13.0'))}\n`);
+  const inside = join(space.repositoryRoot, 'layagrep.config.json');
+  writeFileSync(inside, `${JSON.stringify(createDefaultConfiguration(space.repositoryRoot.split('\\').join('/'), 'convaiinnovations/laya'))}\n`);
   assert.throws(
     () => loadConfiguration(inside, { env: space.env }),
     (error: unknown) => error instanceof ConfigurationError && error.code === 'INVALID_CONFIG'
-      && /outside the repository/.test(error.detail),
+      && /only accepted at/.test(error.detail),
   );
+  const localDirectory = join(space.repositoryRoot, '.layagrep');
+  mkdirSync(localDirectory);
+  const local = join(localDirectory, 'config.json');
+  writeFileSync(local, `${JSON.stringify(createDefaultConfiguration(space.repositoryRoot.split('\\').join('/'), 'convaiinnovations/laya'))}\n`);
+  assert.equal(loadConfiguration(local, { env: space.env }).configPath, local);
 });
 
 test('unsupported options are refused instead of silently ignored', () => {
   const space = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' } });
-  const base = createDefaultConfiguration(space.repositoryRoot.split('\\').join('/'), 'jev-1.13.0');
+  const base = createDefaultConfiguration(space.repositoryRoot.split('\\').join('/'), 'convaiinnovations/laya');
   const cases: [string, unknown][] = [
     ['follow_links', { ...base, source: { ...base.source, follow_links: true } }],
     ['include_source', { ...base, logging: { ...base.logging, include_source: true } }],
@@ -78,7 +83,7 @@ test('unsupported options are refused instead of silently ignored', () => {
   }
 });
 
-test('a missing secret and a disabled disclosure are different, actionable failures', () => {
+test('local Laya needs disclosure authorization but no credential', () => {
   const disabled = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' } });
   assert.throws(
     () => resolveCredential(disabled.loaded, {}),
@@ -86,28 +91,19 @@ test('a missing secret and a disabled disclosure are different, actionable failu
   );
 
   const enabled = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' }, configure: withRemoteEnabled });
-  assert.throws(
-    () => resolveCredential(enabled.loaded, {}),
-    (error: unknown) => error instanceof ConfigurationError && error.code === 'CREDENTIAL_MISSING'
-      && error.detail.includes('TYPESAFE_API_KEY'),
-  );
-  assert.equal(resolveCredential(enabled.loaded, { TYPESAFE_API_KEY: 'secret-value' }), 'secret-value');
-  assert.throws(
-    () => resolveCredential(enabled.loaded, { TYPESAFE_API_KEY: '   ' }),
-    (error: unknown) => error instanceof ConfigurationError && error.code === 'CREDENTIAL_MISSING',
-  );
+  assert.equal(resolveCredential(enabled.loaded, {}), '');
 });
 
 test('doctor reports the useful state without a key and without printing the secret', () => {
   const space = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' }, configure: withRemoteEnabled });
-  const report = doctorReport(space.loaded, { TYPESAFE_API_KEY: 'super-secret-value' });
+  const report = doctorReport(space.loaded, { LAYAGREP_LOCAL_TOKEN: 'super-secret-value' });
   const text = renderDoctorReport(report).join('\n');
 
-  assert.equal(report.provider.credential, 'present');
-  assert.equal(report.provider.adapter, 'typesafe-direct');
-  assert.ok(text.includes('typesafe-direct'));
+  assert.equal(report.provider.credential, 'not_required');
+  assert.equal(report.provider.adapter, 'laya-local');
+  assert.ok(text.includes('laya-local'));
   assert.ok(!text.includes('super-secret-value'), 'doctor must never print the credential value');
-  assert.ok(text.includes('TYPESAFE_API_KEY'), 'doctor names the variable it reads');
+  assert.ok(text.includes('credential         not required'));
   assert.ok(text.includes(space.repositoryRoot), 'doctor states the authorized root');
   assert.ok(text.includes('all disabled (null)'), 'doctor states that optional caps are off');
   assert.ok(text.includes('tiktoken@1.0.22/cl100k_base'), 'doctor names the response counter');
@@ -115,29 +111,7 @@ test('doctor reports the useful state without a key and without printing the sec
   assert.equal(report.pricing, null);
 
   const withoutKey = doctorReport(space.loaded, {});
-  assert.equal(withoutKey.provider.credential, 'missing');
-  assert.ok(withoutKey.problems.some((problem) => problem.includes('TYPESAFE_API_KEY')));
-});
-
-test('doctor identifies Vercel AI Gateway and its credential without contacting it', () => {
-  const space = workspace({
-    files: { 'src/a.ts': 'export const a = 1;\n' },
-    configure: (config) => ({
-      ...config,
-      provider: {
-        adapter: 'vercel-ai-gateway',
-        base_url: 'https://ai-gateway.vercel.sh',
-        api_key_env: 'AI_GATEWAY_API_KEY',
-        model: 'typesafe-ai/jev',
-      },
-    }),
-  });
-  const report = doctorReport(space.loaded, { AI_GATEWAY_API_KEY: 'synthetic-gateway-secret' });
-  const text = renderDoctorReport(report).join('\n');
-  assert.equal(report.provider.adapter, 'vercel-ai-gateway');
-  assert.equal(report.provider.credential, 'not_required');
-  assert.match(text, /vercel-ai-gateway.*ai-gateway\.vercel\.sh.*typesafe-ai\/jev/);
-  assert.equal(text.includes('synthetic-gateway-secret'), false);
+  assert.equal(withoutKey.provider.credential, 'not_required');
 });
 
 test('doctor explains a disabled disclosure rather than reporting a missing key', () => {
@@ -159,9 +133,9 @@ test('an enabled cap is reported with its value, a disabled one stays null', () 
   assert.ok(renderDoctorReport(report).join('\n').includes('request_attempts: 12'));
 });
 
-test('the cache directory is derived per root and never inside the repository', () => {
+test('the cache directory is derived per root inside the repository runtime', () => {
   const space = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' } });
-  assert.ok(!space.loaded.cacheDirectory.startsWith(space.repositoryRoot));
+  assert.ok(space.loaded.cacheDirectory.startsWith(join(space.repositoryRoot, '.layagrep', 'cache')));
   assert.ok(space.loaded.cacheDirectory.includes(space.loaded.fingerprint));
 
   const other = workspace({ files: { 'src/a.ts': 'export const a = 1;\n' } });
@@ -169,7 +143,7 @@ test('the cache directory is derived per root and never inside the repository', 
 });
 
 test('a missing or malformed configuration file is a configuration error, not a crash', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'jevgrep-config-'));
+  const directory = realpathSync.native(mkdtempSync(join(tmpdir(), 'layagrep-config-')));
   const broken = join(directory, 'broken.json');
   writeFileSync(broken, '{ not json');
   try {

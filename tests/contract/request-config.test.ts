@@ -71,7 +71,7 @@ test('configuration has explicit defaults, disabled disclosure and no default op
   assert.deepEqual(createDefaultConfiguration(validConfiguration.repository_root, validConfiguration.provider.model), validConfiguration);
   assert.deepEqual(configurationSchema.parse(validConfiguration), validConfiguration);
   assert.equal(configurationSchema.safeParse(invalidConfiguration).success, false);
-  assert.equal(createDefaultConfiguration('/work/synthetic', 'synthetic-model-v1').repository_root, '/work/synthetic');
+  assert.equal(createDefaultConfiguration('/work/synthetic', 'convaiinnovations/laya').repository_root, '/work/synthetic');
 });
 
 test('null disables a cap; zero remains a real cap; USD caps require matching dated pricing', () => {
@@ -132,8 +132,8 @@ test('provider settings accept only the documented endpoint and well-formed rate
   assert.throws(() => configurationSchema.parse({ ...validConfiguration, provider: { ...validConfiguration.provider,
     pricing: { model: validConfiguration.provider.model, verified_at: '2026-09-20', input_usd_per_million_tokens: 0.042, output_usd_per_million_tokens: 1 },
   } }), /free-output/);
-  for (const base_url of ['http://api.typesafe.ai', 'https://api.typesafe.ai.evil.test', 'https://key@api.typesafe.ai',
-    'https://api.typesafe.ai?key=secret', 'https://api.typesafe.ai:444', 'https://custom.test']) {
+  for (const base_url of ['http://remote.example', 'http://127.0.0.1:8000.evil.test', 'https://key@remote.example',
+    'http://127.0.0.1:8000?key=secret', 'http://127.0.0.1:8000:444', 'https://custom.test']) {
     assert.throws(() => configurationSchema.parse({ ...validConfiguration, provider: { ...validConfiguration.provider, base_url } }), ContractValidationError);
   }
   for (const verified_at of ['2026-02-30', 'yesterday', '2026-13-01']) {
@@ -143,33 +143,13 @@ test('provider settings accept only the documented endpoint and well-formed rate
   }
 });
 
-test('Vercel AI Gateway requires its explicit adapter, endpoint and Jev model id', () => {
-  const gateway = {
-    ...validConfiguration,
-    provider: {
-      adapter: 'vercel-ai-gateway',
-      base_url: 'https://ai-gateway.vercel.sh',
-      api_key_env: 'AI_GATEWAY_API_KEY',
-      model: 'typesafe-ai/jev',
-    },
-  };
-  assert.deepEqual(configurationSchema.parse(gateway), gateway);
-
+test('only the loopback Laya adapter and model are accepted', () => {
+  assert.deepEqual(configurationSchema.parse(validConfiguration), validConfiguration);
   for (const provider of [
-    { ...gateway.provider, adapter: 'typesafe-direct' },
-    { ...gateway.provider, base_url: 'https://api.typesafe.ai' },
-    { ...gateway.provider, model: 'jev-1.13.0' },
-    { ...gateway.provider, adapter: 'unknown-adapter' },
-  ]) {
-    assert.throws(() => configurationSchema.parse({ ...gateway, provider }), ContractValidationError);
-  }
-
-  const legacyDirect = structuredClone(validConfiguration) as Record<string, unknown>;
-  const legacyProvider = structuredClone(validConfiguration.provider) as Record<string, unknown>;
-  delete legacyProvider['adapter'];
-  legacyDirect['provider'] = legacyProvider;
-  assert.equal(configurationSchema.parse(legacyDirect).provider.adapter, undefined,
-    'an existing direct configuration remains valid without the selector');
+    { ...validConfiguration.provider, adapter: 'unknown-adapter' },
+    { ...validConfiguration.provider, base_url: 'https://ai-gateway.vercel.sh' },
+    { ...validConfiguration.provider, model: 'other-model' },
+  ]) assert.throws(() => configurationSchema.parse({ ...validConfiguration, provider }), ContractValidationError);
 });
 
 test('validators reject executable properties and do not echo unknown keys or values', () => {

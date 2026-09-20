@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { repoRoot } from './helpers/cli-runner.ts';
 
 /**
- * Package-level controls for JG-001: pinned runtime and dependency versions, the
+ * Package-level controls for LG-001: pinned runtime and dependency versions, the
  * required scripts and the executable entry point. These assertions keep the
  * scaffold reproducible on Windows and Linux.
  */
@@ -51,10 +51,10 @@ test('every declared dependency is pinned to an exact version', () => {
   }
   // The runtime dependency list is an allowlist, not a free-for-all: each entry is a
   // decision recorded in an issue report. `tiktoken` is the reference response counter
-  // pinned by JG-006; the Vercel adapter uses the official AI SDK evaluation API.
+  // pinned by LG-006; the Vercel adapter uses the official AI SDK evaluation API.
   assert.deepEqual(
     Object.keys(manifest.dependencies ?? {}).sort(),
-    ['@ai-sdk/gateway', 'ai', 'tiktoken', 'typescript-parser'],
+    ['tiktoken', 'typescript-parser'],
     'a new runtime dependency needs its own recorded decision before it is added here',
   );
 });
@@ -82,9 +82,9 @@ test('the package exposes one executable entry point built from src/cli.ts', () 
   assert.notEqual(manifest.private, true);
   assert.equal(manifest.publishConfig.access, 'public');
   assert.equal(manifest.type, 'module');
-  assert.deepEqual(Object.keys(manifest.bin), ['jevgrep']);
-  assert.equal(manifest.bin['jevgrep'], 'dist/cli.js');
-  assert.deepEqual(manifest.files, ['dist']);
+  assert.deepEqual(Object.keys(manifest.bin), ['layagrep']);
+  assert.equal(manifest.bin['layagrep'], 'dist/cli.js');
+  assert.deepEqual(manifest.files, ['dist', 'runtime']);
 
   const buildConfig: { compilerOptions: { outDir: string; rootDir: string } } = JSON.parse(
     readFileSync(join(repoRoot, 'tsconfig.build.json'), 'utf8'),
@@ -114,4 +114,13 @@ test('the strict type-checking options stay enabled', () => {
   ]) {
     assert.equal(options[option], true, `tsconfig.json must set "${option}": true`);
   }
+});
+
+test('the locked Laya runtime has wheels for every supported platform', () => {
+  const lock = readFileSync(join(repoRoot, 'runtime', 'uv.lock'), 'utf8');
+  assert.match(lock, /torch-2\.2\.2-cp311-cp311-manylinux1_x86_64\.whl/);
+  assert.match(lock, /torch-2\.2\.2-cp311-cp311-manylinux2014_aarch64\.whl/);
+  assert.match(lock, /torch-2\.2\.2-cp311-cp311-win_amd64\.whl/);
+  assert.match(lock, /torch-2\.2\.2-cp311-none-macosx_10_9_x86_64\.whl/);
+  assert.match(lock, /torch-2\.2\.2-cp311-none-macosx_11_0_arm64\.whl/);
 });

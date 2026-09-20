@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * JevGrep command-line entry point.
+ * LayaGrep command-line entry point.
  *
  * The entry point validates arguments, handles help/version, and dispatches every
  * documented command to the shared command layer. Provider activation remains guarded
@@ -175,21 +175,21 @@ async function dispatchCommand(
   try {
     const code = await runner(command);
     if (!Number.isInteger(code) || !EXIT_CODES_IN_USE.has(code)) {
-      io.err('jevgrep: command failed; no result was produced');
+      io.err('layagrep: command failed; no result was produced');
       return EXIT_FATAL;
     }
     return code;
   } catch (error) {
     const code = safeCodeOf(error);
     const detail = code === undefined ? '' : ` (${code})`;
-    io.err(`jevgrep: command failed${detail}; no result was produced`);
+    io.err(`layagrep: command failed${detail}; no result was produced`);
     return EXIT_FATAL;
   }
 }
 
 function usageError(io: CliIo, detail: string): number {
-  io.err(`jevgrep: ${detail}`);
-  io.err("run 'jevgrep --help' for usage");
+  io.err(`layagrep: ${detail}`);
+  io.err("run 'layagrep --help' for usage");
   return EXIT_USAGE;
 }
 
@@ -200,10 +200,10 @@ function usageError(io: CliIo, detail: string): number {
  */
 function reportVersion(io: CliIo, dependencies: CliDependencies): number {
   try {
-    io.out(`jevgrep ${dependencies.readVersion()}`);
+    io.out(`layagrep ${dependencies.readVersion()}`);
     return EXIT_OK;
   } catch {
-    io.err('jevgrep: cannot read the package manifest of this installation; reinstall the package');
+    io.err('layagrep: cannot read the package manifest of this installation; reinstall the package');
     return EXIT_FATAL;
   }
 }

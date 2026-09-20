@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { PROBE_SOURCE, probeTypeScriptParser } from '../scripts/probe-typescript-parser.ts';
 
 /**
- * The parser-availability probe (JG-015).
+ * The parser-availability probe (LG-015).
  *
  * The chunker's boundaries come from a pinned syntax parser. That choice rests on a
  * fact about the installed packages, so the fact is checked here rather than asserted

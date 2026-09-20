@@ -85,7 +85,7 @@ test('--version prints the manifest version and succeeds', async () => {
   for (const flag of ['--version', '-V']) {
     const result = await invoke([flag]);
     assert.equal(result.code, EXIT_OK);
-    assert.equal(result.stdout, `jevgrep ${expected}`);
+    assert.equal(result.stdout, `layagrep ${expected}`);
     assert.equal(result.stderr, '');
   }
 });
@@ -114,12 +114,12 @@ test('--help after a command prints that command help and succeeds', async () =>
   for (const command of ['search', 'inspect', 'doctor', 'mcp']) {
     const result = await invoke([command, '--help']);
     assert.equal(result.code, EXIT_OK, `${command} --help`);
-    assert.match(result.stdout, new RegExp(`^usage: jevgrep ${command}`));
+    assert.match(result.stdout, new RegExp(`^usage: layagrep ${command}`));
     assert.equal(result.stderr, '');
   }
   const cache = await invoke(['cache', 'clear', '--help']);
   assert.equal(cache.code, EXIT_OK);
-  assert.match(cache.stdout, /^usage: jevgrep cache clear/);
+  assert.match(cache.stdout, /^usage: layagrep cache clear/);
 
   const unknown = await invoke(['frobnicate', '--help']);
   assert.equal(unknown.code, EXIT_USAGE);
@@ -176,7 +176,7 @@ test('every documented command dispatches instead of being refused', async () =>
 
 test('the help text lists the documented commands and the exit-code contract', () => {
   const text = helpText();
-  assert.match(text, /^usage: jevgrep/);
+  assert.match(text, /^usage: layagrep/);
   for (const command of ['search', 'inspect', 'doctor', 'mcp', 'cache']) {
     assert.match(text, new RegExp(`^ {2}${command}\\b`, 'm'), `${command} is not listed`);
   }

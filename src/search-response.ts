@@ -4,7 +4,7 @@ import { requireContract } from './contract-schema.ts';
 
 export const CLI_EXIT_CODES = Object.freeze({ complete: 0, rejected: 2, partial: 3, error: 4, interrupted: 130 });
 
-/** JG-006 supplies the pinned reference tokenizer; this contract invents no tokenizer. */
+/** LG-006 supplies the pinned reference tokenizer; this contract invents no tokenizer. */
 export type ResponseTokenCounter = { readonly id: string; readonly count: (serialized: string) => number };
 
 function renderedOutcome(input: unknown, counter: ResponseTokenCounter): { outcome: SearchOutcome; text: string } {
@@ -26,7 +26,7 @@ export function toCliSearchResponse(input: unknown, counter: ResponseTokenCounte
   return { stdout: text, exitCode: cancelled ? CLI_EXIT_CODES.interrupted : CLI_EXIT_CODES[outcome.status] };
 }
 
-/** The MCP lifecycle must suppress this call after client cancellation (JG-009/024). */
+/** The MCP lifecycle must suppress this call after client cancellation (LG-009/024). */
 export function toMcpSearchResponse(input: unknown, counter: ResponseTokenCounter): {
   content: [{ type: 'text'; text: string }]; isError: boolean;
 } {

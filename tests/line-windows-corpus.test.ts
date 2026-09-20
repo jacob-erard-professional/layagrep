@@ -6,7 +6,7 @@ import { DEFAULT_WINDOW_LIMITS, lineWindows } from '../src/source/line-windows.t
 import { repoRoot } from './helpers/cli-runner.ts';
 
 /**
- * JG-012 acceptance criterion 1, exercised on the real fixture material of this repository:
+ * LG-012 acceptance criterion 1, exercised on the real fixture material of this repository:
  * every nonblank line of a prepared file must be covered by at least one window, every
  * window must be an exact original slice, and the result must be deterministic.
  *

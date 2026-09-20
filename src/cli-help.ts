@@ -1,131 +1,84 @@
-/**
- * Help text for the documented CLI surface (JG-023, specification 2.1, 4.1, 4.5 and 7.3).
- *
- * The help is generated from the same option table the parser enforces, so it can neither
- * advertise an option the parser refuses nor hide one it accepts. Each page also states what
- * the command does with the provider, and the exit-code contract it obeys.
- */
+/** Help generated from the same command option table the parser enforces. */
 import { allowedOptionsFor } from './cli-args.ts';
 
 const COMMAND_SUMMARY: Record<string, string> = {
-  init: 'Create a trusted profile and secrets file outside the repository (TypeSafe AI is the default).',
-  doctor: 'Validate the trusted configuration and report the local setup without any network call.',
-  inspect: 'Report the eligible scope, exclusions and estimated work without contacting the provider.',
+  setup: 'Install uv, Python, Laya, the model cache, server and configuration inside this repository.',
+  start: 'Start the repository-local Laya server in the background.',
+  stop: 'Stop the repository-local Laya server.',
+  restart: 'Restart the repository-local Laya server.',
+  status: 'Report whether the repository-local Laya server is healthy.',
+  logs: 'Print the repository-local Laya server log.',
+  doctor: 'Validate the configuration, managed runtime, model cache and server health.',
+  inspect: 'Report eligible scope, exclusions and estimated work without running inference.',
   search: 'Return original excerpts that answer a behavior question, inside the response budget.',
-  mcp: 'Serve semantic_search_code over the MCP stdio transport (one root per process).',
-  'cache clear': 'Remove recognized evaluations from the configured local score cache.',
+  mcp: 'Serve semantic_search_code over MCP stdio (one repository per process).',
+  'cache clear': 'Remove recognized evaluations from the repository-local score cache.',
 };
 
 const OPTION_TEXT: Record<string, string> = {
-  '--root': '--root <path>              repository to authorize (default: current directory)',
-  '--provider': '--provider <name>         typesafe (default), vercel or openrouter',
-  '--global': '--global                  configure provider credentials for this computer only',
-  '--config': '--config <path>            override automatic project-profile discovery',
-  '--query': '--query <text>             the search question, kept verbatim',
-  '--query-file': '--query-file <path>        read the question from a file (multiline queries)',
-  '--scope': '--scope <relative path>    repeatable, default ".", never absolute and never traversing',
-  '--max-context-tokens': '--max-context-tokens <n>   response budget in reference tokens (min 1024; configured default/max: initially 4000/16000)',
-  '--allow-partial': '--allow-partial            allow a partial scan explicitly (default: refuse)',
-  '--json': '--json                     canonical JSON on stdout instead of the human view',
+  '--root': '--root <path>              repository root (default: current project)',
+  '--port': '--port <number>            loopback server port (default: 8000)',
+  '--lines': '--lines <number>           trailing log lines (default: 200)',
+  '--follow': '--follow                   continue streaming new log output',
+  '--config': '--config <path>            override .layagrep/config.json discovery',
+  '--query': '--query <text>             search question, kept verbatim',
+  '--query-file': '--query-file <path>        read a multiline question from a file',
+  '--scope': '--scope <relative path>    repeatable; default "."',
+  '--max-context-tokens': '--max-context-tokens <n>   response budget (min 1,024)',
+  '--allow-partial': '--allow-partial            permit an explicitly partial scan',
+  '--json': '--json                     machine-readable JSON output',
 };
 
-/** Usage line of each command, written by hand so a choice is shown as a choice. */
 const COMMAND_USAGE: Record<string, string> = {
-  init: 'jevgrep init [--global] [--root <path>] [--provider typesafe|vercel|openrouter]',
-  search:
-    'jevgrep search [--config <path>] (--query <text> | --query-file <path>) [--scope <path>]... [--max-context-tokens <n>] [--json] [--allow-partial]',
-  inspect: 'jevgrep inspect [--config <path>] [--scope <path>]... [--json]',
-  doctor: 'jevgrep doctor [--config <path>]',
-  mcp: 'jevgrep mcp [--config <path>]',
-  'cache clear': 'jevgrep cache clear [--config <path>]',
+  setup: 'layagrep setup [--root <path>] [--port <number>]',
+  start: 'layagrep start [--root <path>]',
+  stop: 'layagrep stop [--root <path>]',
+  restart: 'layagrep restart [--root <path>]',
+  status: 'layagrep status [--root <path>] [--json]',
+  logs: 'layagrep logs [--root <path>] [--lines <number>] [--follow]',
+  search: 'layagrep search [--config <path>] (--query <text> | --query-file <path>) [--scope <path>]... [--max-context-tokens <n>] [--json] [--allow-partial]',
+  inspect: 'layagrep inspect [--config <path>] [--scope <path>]... [--json]',
+  doctor: 'layagrep doctor [--config <path>]',
+  mcp: 'layagrep mcp [--config <path>]',
+  'cache clear': 'layagrep cache clear [--config <path>]',
 };
 
-/** The commands this build documents, in the order the global help lists them. */
 export function documentedCommands(): readonly string[] {
-  return ['init', 'search', 'inspect', 'doctor', 'mcp', 'cache clear'];
+  return ['setup', 'start', 'stop', 'restart', 'status', 'logs', 'search', 'inspect', 'doctor', 'mcp', 'cache clear'];
 }
 
-/** Help page of one command, or undefined when the command is not documented. */
 export function commandHelp(command: string): string | undefined {
-  if (!documentedCommands().includes(command)) {
-    return undefined;
-  }
+  if (!documentedCommands().includes(command)) return undefined;
   const options = allowedOptionsFor(command) ?? [];
-  const lines: string[] = [
-    `usage: ${COMMAND_USAGE[command] ?? `jevgrep ${command} --config <path>`}`,
-    '',
-    COMMAND_SUMMARY[command] ?? '',
-    '',
-    'options:',
-  ];
-  for (const option of options) {
-    const text = OPTION_TEXT[option];
-    if (text !== undefined) {
-      lines.push(`  ${text}`);
-    }
-  }
-  lines.push('  -h, --help                 show this page and exit 0');
-  lines.push('');
-  if (options.includes('--json')) {
-    lines.push('outputs: stdout carries exactly the result that was asked for (canonical JSON with --json,');
-    lines.push('otherwise the human view or the report); stderr carries diagnostics and measurements, so a');
-  } else if (command === 'init') {
-    lines.push('global provider credentials and per-project authorization profiles live in the user configuration directory, never in a repository.');
-  } else {
-    lines.push('outputs: stdout carries exactly the requested command output or protocol; stderr carries');
-    lines.push('diagnostics and measurements, so a');
-  }
-  lines.push('pipeline keeps the evidence even when the exit code is non-zero.');
-  if (command === 'search') {
-    lines.push('remote evaluation needs the credential named by the trusted configuration; without');
-    lines.push('it the search is refused with exit code 2 and no request is sent.');
-  } else if (command === 'mcp') {
-    lines.push('starting the local stdio server performs no scan and no provider call. Tool calls may');
-    lines.push('request remote evaluation only when the trusted configuration allows it and a credential exists.');
-  } else if (command === 'init') {
-    lines.push('this command stores a supplied credential locally but never contacts the provider.');
-    lines.push('new project profiles disable remote evaluation; review the profile before enabling remote_evaluation_enabled.');
-  } else {
-    lines.push('this command is local: it never needs a credential and never contacts the provider.');
-  }
-  lines.push('');
-  lines.push('exit codes: 0 complete, 2 rejected request or configuration, 3 partial result,');
-  lines.push('4 fatal runtime failure, 130 interrupted.');
+  const lines = [`usage: ${COMMAND_USAGE[command] ?? `layagrep ${command}`}`, '', COMMAND_SUMMARY[command] ?? '', '', 'options:'];
+  for (const option of options) lines.push(`  ${OPTION_TEXT[option] ?? option}`);
+  lines.push('  -h, --help                 show this page and exit 0', '');
+  if (command === 'setup') lines.push('setup downloads the pinned runtime and model into .layagrep/; it does not start the server.');
+  else if (command === 'search' || command === 'mcp') lines.push('source excerpts are sent only to the configured loopback Laya server.');
+  else lines.push("runtime and cache operations stay inside this repository's .layagrep/ directory.");
+  lines.push('', 'exit codes: 0 complete, 2 rejected, 3 partial, 4 runtime failure, 130 interrupted.');
   return lines.join('\n');
 }
 
-/** Global help: options of the executable plus the documented commands. */
 export function globalHelp(): string {
-  const lines: string[] = [
-    'usage: jevgrep --help | --version | <command> [options]',
-    '',
-    "JevGrep finds evidence in a repository for a coding agent's question. It evaluates",
-    'authorized code fragments with a configured remote Jev provider and returns original',
-    'excerpts under a response budget.',
-    '',
-    'Commands validate their arguments, then run against the shared engine. Search requests',
-    '(from the CLI or an MCP tool call) may contact the configured remote provider only when',
-    'the trusted configuration allows it and the credential is present.',
-    '',
+  const lines = [
+    'usage: layagrep --help | --version | <command> [options]', '',
+    'Local semantic code search powered by convaiinnovations/laya.',
+    'Each repository owns its complete runtime under .layagrep/.', '',
     'options:',
     '  -h, --help      show this help and exit 0',
-    '  -V, --version   show the package version and exit 0',
-    '',
+    '  -V, --version   show the package version and exit 0', '',
     'commands:',
   ];
-  for (const command of documentedCommands()) {
-    lines.push(`  ${command}`);
-  }
-  lines.push('');
-  lines.push("run 'jevgrep <command> --help' for the options of one command");
-  lines.push('');
-  lines.push('exit codes:');
-  lines.push('  0    complete result');
-  lines.push('  2    rejected request, configuration or credential');
-  lines.push('  3    partial result: the scan or the response is incomplete, and the report says so');
-  lines.push('  4    fatal runtime failure, for example an unreadable package manifest');
-  lines.push('  130  user interruption');
-  lines.push('');
-  lines.push('documentation: README.md, docs/install-guide.md');
+  for (const command of documentedCommands()) lines.push(`  ${command}`);
+  lines.push('', "run 'layagrep <command> --help' for command options", '',
+    'quick start: layagrep setup && layagrep start && layagrep doctor', '',
+    'exit codes:',
+    '  0    complete result',
+    '  2    rejected request or configuration',
+    '  3    partial result',
+    '  4    fatal runtime failure',
+    '  130  user interruption', '',
+    'documentation: README.md, docs/install-guide.md');
   return lines.join('\n');
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -10,7 +10,7 @@ import {
 import type { EvaluationIdentityInput } from '../src/evaluation/cache.ts';
 
 /**
- * Exact evaluation reuse (JG-018, specification 9, requirement R9).
+ * Exact evaluation reuse (LG-018, specification 9, requirement R9).
  *
  * Reuse is allowed only when every input the model could see is identical. The tests
  * below pin both halves of that rule: what must invalidate a score, and what must
@@ -19,7 +19,7 @@ import type { EvaluationIdentityInput } from '../src/evaluation/cache.ts';
 const directories: string[] = [];
 
 function cacheDirectory(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'jevgrep-cache-'));
+  const directory = realpathSync.native(mkdtempSync(join(tmpdir(), 'layagrep-cache-')));
   directories.push(directory);
   return directory;
 }
@@ -39,12 +39,12 @@ const BASE: EvaluationIdentityInput = {
   label: 'function:invalidate',
   criterionVersion: 'criterion-1',
   layoutVersion: 'layout-a-1',
-  chunkerVersion: 'jevgrep-syntax-1',
-  endpoint: 'https://api.typesafe.ai',
-  modelRevision: 'jev-1.13.0',
+  chunkerVersion: 'layagrep-syntax-1',
+  endpoint: 'http://127.0.0.1:8000',
+  modelRevision: 'convaiinnovations/laya',
 };
 
-const META = { modelRevision: 'jev-1.13.0', layout: 'layout-a-1', criterion: 'criterion-1', chunker: 'jevgrep-syntax-1' };
+const META = { modelRevision: 'convaiinnovations/laya', layout: 'layout-a-1', criterion: 'criterion-1', chunker: 'layagrep-syntax-1' };
 
 function newCache(overrides: Partial<ConstructorParameters<typeof ScoreCache>[0]> = {}): ScoreCache {
   return new ScoreCache({
@@ -66,8 +66,8 @@ test('rolling aliases expire within 15 minutes, including across sessions and po
   let now = 1_000;
   const options = { directory, enabled: true, ttlSeconds: 604_800, maxBytes: 1_000_000,
     rollingTtlSeconds: 900, now: () => now };
-  const identity = evaluationIdentity({ ...BASE, modelRevision: 'typesafe-ai/jev' });
-  const meta = { ...META, modelRevision: 'typesafe-ai/jev' };
+  const identity = evaluationIdentity(BASE);
+  const meta = META;
   assert.equal(new ScoreCache(options).write(identity, 0.9, meta), true);
   now += 899_999;
   assert.equal(new ScoreCache(options).read(identity), 0.9);
@@ -91,9 +91,9 @@ test('any change the model can see prevents reuse', () => {
     ['structural label', { label: 'function:other' }],
     ['criterion version', { criterionVersion: 'criterion-2' }],
     ['request layout', { layoutVersion: 'layout-c-1' }],
-    ['chunker version', { chunkerVersion: 'jevgrep-syntax-2' }],
-    ['provider endpoint', { endpoint: 'https://api.typesafe.ai/other' }],
-    ['model revision', { modelRevision: 'jev-1.14.0' }],
+    ['chunker version', { chunkerVersion: 'layagrep-syntax-2' }],
+    ['provider endpoint', { endpoint: 'http://127.0.0.1:8000/other' }],
+    ['model revision', { modelRevision: 'another-model' }],
     ['shared batch composition', { batchComposition: ['f-one', 'f-two'] }],
   ];
   const cache = newCache();
@@ -128,7 +128,7 @@ test('a corrupt, truncated, foreign or expired entry is a miss', () => {
 
   writeFileSync(file, JSON.stringify({
     schema_version: CACHE_SCHEMA_VERSION, identity: 'another-identity', score: 0.5,
-    model_revision: 'jev-1.13.0', layout: 'a', criterion: 'c', chunker: 'k',
+    model_revision: 'convaiinnovations/laya', layout: 'a', criterion: 'c', chunker: 'k',
     created_at_ms: 0, expires_at_ms: Number.MAX_SAFE_INTEGER,
   }));
   assert.equal(cache.read(identity), null, 'an entry that names another identity is a miss');
@@ -148,16 +148,14 @@ test('a time-to-live expiry is a miss and the entry is dropped', () => {
 });
 
 test('a model whose revision cannot be identified is never persisted', () => {
-  assert.equal(isPinnedModelRevision('jev-1.13.0'), true);
-  assert.equal(isPinnedModelRevision('jev-latest'), false);
-  assert.equal(isPinnedModelRevision('jev-preview'), false);
-  for (const alias of ['jev-2', 'jev-1.13.0-latest', 'typesafe-ai/jev', 'something-2026']) {
+  assert.equal(isPinnedModelRevision('convaiinnovations/laya'), false);
+  for (const alias of ['laya-latest', 'laya-preview', 'other-model', 'something-2026']) {
     assert.equal(isPinnedModelRevision(alias), false);
   }
 
   const cache = newCache();
-  const identity = evaluationIdentity({ ...BASE, modelRevision: 'jev-latest' });
-  assert.equal(cache.write(identity, 0.9, { ...META, modelRevision: 'jev-latest' }), false);
+  const identity = evaluationIdentity({ ...BASE, modelRevision: 'laya-latest' });
+  assert.equal(cache.write(identity, 0.9, { ...META, modelRevision: 'laya-latest' }), false);
   assert.equal(cache.read(identity), null);
 });
 

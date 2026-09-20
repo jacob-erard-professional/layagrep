@@ -11,7 +11,7 @@ import type { PreparedFragment } from '../src/source/chunker.ts';
 
 /**
  * Ranking, merging, budgeted selection and the measured response
- * (JG-019, with the rendering guarantee JG-020 owns).
+ * (LG-019, with the rendering guarantee LG-020 owns).
  *
  * The properties under test come straight from specification 8.1 and 8.2: a stable
  * order independent of provider completion order, merging only inside one file
@@ -53,7 +53,7 @@ function fragment(path: string, startLine: number, endLine: number, sha = digest
     text,
     byteCount: Buffer.byteLength(text),
     tokenCount: countReferenceTokens(text),
-    chunker: 'jevgrep-syntax-1',
+    chunker: 'layagrep-syntax-1',
     classification: 'syntax-range',
     label: null,
   };

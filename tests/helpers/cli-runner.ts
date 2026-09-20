@@ -24,20 +24,20 @@ export const offlinePreloadUrl: string = pathToFileURL(
 
 /**
  * Environment without provider credentials, with the offline guard preloaded. The
- * ordinary suite must pass without a Jev key, so tests spawn the CLI with every
+ * ordinary suite must pass without credentials, so tests spawn the CLI with every
  * credential-looking variable removed, and a provider call in the child process fails
  * loudly instead of reaching the network.
  */
 export function offlineEnv(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of Object.keys(env)) {
-    if (/(JEV|TYPESAFE|API_KEY|ACCESS_TOKEN)/i.test(key)) {
+    if (/(LAYA|API_KEY|ACCESS_TOKEN)/i.test(key)) {
       delete env[key];
     }
   }
   // Automatic profile discovery must never load the operator's settings/secrets.
   // This fresh path does not need to exist; commands requiring a profile reject it.
-  env['JEVGREP_CONFIG_HOME'] = join(tmpdir(), `jevgrep-cli-config-${randomUUID()}`);
+  env['LAYAGREP_CONFIG_HOME'] = join(tmpdir(), `layagrep-cli-config-${randomUUID()}`);
   const preload = `--import ${offlinePreloadUrl}`;
   env['NODE_OPTIONS'] = env['NODE_OPTIONS'] === undefined ? preload : `${env['NODE_OPTIONS']} ${preload}`;
   return env;

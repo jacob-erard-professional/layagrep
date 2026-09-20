@@ -8,12 +8,12 @@ import type { CommandDependencies } from '../src/cli-commands.ts';
 import type { CliIo } from '../src/cli.ts';
 import { createSearchEngine } from '../src/engine.ts';
 import { ScoreCache } from '../src/evaluation/cache.ts';
-import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/jev.ts';
+import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/laya.ts';
 import { CLI_EXIT_CODES } from '../src/search-response.ts';
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 /**
- * CLI command execution (JG-023, specification 2.1 and 4.5).
+ * CLI command execution (LG-023, specification 2.1 and 4.5).
  *
  * The acceptance criteria drive the cases: `doctor` and `inspect` work with no key
  * and no dispatch, `search --json` returns exactly the engine's canonical contract,
@@ -43,7 +43,7 @@ after(() => {
 });
 
 class CountingProvider implements ProviderClient {
-  readonly model = 'jev-1.13.0';
+  readonly model = 'convaiinnovations/laya';
   calls = 0;
 
   evaluateBatch(batch: EvaluationBatch): Promise<BatchEvaluation> {
@@ -92,7 +92,7 @@ test('doctor runs without a credential and dispatches nothing', async () => {
   assert.equal(provider.calls, 0);
   const text = captured.out.join('\n');
   assert.ok(text.includes('repository root'));
-  assert.ok(text.includes('TYPESAFE_API_KEY'));
+  assert.ok(text.includes('credential         not required'));
   assert.ok(text.includes('all disabled (null)'));
   assert.equal(captured.err.length, 0, 'a healthy doctor writes nothing to stderr');
 });
@@ -185,7 +185,7 @@ test('a multiline question from a file is used verbatim, never interpreted', asy
 
   const code = await executeCommand(command, captured.io, dependencies(space, provider));
   assert.equal(code, CLI_EXIT_CODES.complete);
-  assert.equal(provider.calls, 1);
+  assert.equal(provider.calls, 2);
 });
 
 test('exit codes follow the documented table', async () => {
@@ -226,13 +226,14 @@ test('exit codes follow the documented table', async () => {
 
 test('a partial result exits 3 and still prints its evidence', async () => {
   const space = workspace();
+  let calls = 0;
   const failing: ProviderClient = {
-    model: 'jev-1.13.0',
+    model: 'convaiinnovations/laya',
     evaluateBatch: (batch: EvaluationBatch) => Promise.resolve({
-      scores: new Map(batch.items.slice(0, 1).map((item) => [item.id, 0.95] as const)),
-      invalid: batch.items.slice(1).map((item) => ({ id: item.id, reason: 'missing' as const })),
+      scores: new Map(calls++ === 0 ? batch.items.map((item) => [item.id, 0.95] as const) : []),
+      invalid: calls === 1 ? [] : batch.items.map((item) => ({ id: item.id, reason: 'missing' as const })),
       usage: { inputTokens: 10, outputTokens: 0 },
-      requestedModel: 'jev-1.13.0', returnedModel: 'jev-1.13.0', transmittedBytes: 100, requestId: null,
+      requestedModel: 'convaiinnovations/laya', returnedModel: 'convaiinnovations/laya', transmittedBytes: 100, requestId: null,
     }),
   };
   const captured = capture();
@@ -268,6 +269,7 @@ test('cache clear removes only the configured cache and writes nothing to the re
     parsed(['search', '--config', space.configPath, '--query', 'cache invalidation', '--json']),
     search.io, dependencies(space, provider),
   );
+  const callsAfterFirstSearch = provider.calls;
 
   const cleared = capture();
   const code = await executeCommand(parsed(['cache', 'clear', '--config', space.configPath]), cleared.io, dependencies(space, provider));
@@ -280,7 +282,7 @@ test('cache clear removes only the configured cache and writes nothing to the re
     parsed(['search', '--config', space.configPath, '--query', 'cache invalidation', '--json']),
     again.io, dependencies(space, provider),
   );
-  assert.equal(provider.calls, 2, 'after a clear, the same search evaluates again');
+  assert.equal(provider.calls, callsAfterFirstSearch * 2, 'after a clear, the same search evaluates again');
 });
 
 test('a search without remote evaluation is refused before any dispatch', async () => {

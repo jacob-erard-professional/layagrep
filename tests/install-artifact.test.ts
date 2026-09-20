@@ -7,7 +7,7 @@ import { after, test } from 'node:test';
 import { repoRoot } from './helpers/cli-runner.ts';
 
 /**
- * JG-026 acceptance: the versioned local artifact must install into a clean prefix and run
+ * LG-026 acceptance: the versioned local artifact must install into a clean prefix and run
  * there, without the repository, without a provider credential and without fetching an
  * unpinned version at start-up.
  *
@@ -51,7 +51,7 @@ function npm(args: readonly string[], cwd: string): RunResult {
 }
 
 test('the packed artifact installs into a clean prefix and runs there', { timeout: 600_000 }, () => {
-  const workspace = mkdtempSync(join(tmpdir(), 'jevgrep-install-'));
+  const workspace = mkdtempSync(join(tmpdir(), 'layagrep-install-'));
   temporaryRoots.push(workspace);
   const packDir = join(workspace, 'pack');
   const prefix = join(workspace, 'prefix');
@@ -81,13 +81,13 @@ test('the packed artifact installs into a clean prefix and runs there', { timeou
   const installation = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as Record<string, unknown>;
   const packageName = installation['name'];
   assert.equal(typeof packageName, 'string');
-  installation['name'] = 'jevgrep-artifact-install';
+  installation['name'] = 'layagrep-artifact-install';
   delete installation['bin'];
   delete installation['scripts'];
   const lock = JSON.parse(readFileSync(join(repoRoot, 'package-lock.json'), 'utf8')) as {
     name: string; packages: Record<string, Record<string, unknown>>;
   };
-  lock.name = 'jevgrep-artifact-install';
+  lock.name = 'layagrep-artifact-install';
   lock.packages['']!['name'] = lock.name;
   delete lock.packages['']!['bin'];
   writeFileSync(join(prefix, 'package.json'), JSON.stringify(installation));
@@ -102,6 +102,10 @@ test('the packed artifact installs into a clean prefix and runs there', { timeou
   assert.equal(existsSync(join(packageRoot, 'dist', 'cli.js')), true, 'the artifact must ship the built entry point');
   const shipped = readdirSync(packageRoot).sort();
   assert.ok(shipped.includes('dist'), 'the artifact ships the build output');
+  assert.ok(shipped.includes('runtime'), 'the artifact ships the pinned local Laya runtime');
+  for (const asset of ['pyproject.toml', 'uv.lock', 'server.py']) {
+    assert.equal(existsSync(join(packageRoot, 'runtime', asset)), true, `the artifact must ship runtime/${asset}`);
+  }
   assert.ok(shipped.includes('package.json'), 'the artifact ships its manifest');
   for (const forbidden of ['src', 'tests', 'benchmarks', 'docs', 'scripts', 'node_modules']) {
     assert.equal(
@@ -116,7 +120,7 @@ test('the packed artifact installs into a clean prefix and runs there', { timeou
     dependencies?: Record<string, string>;
     bin?: Record<string, string>;
   };
-  assert.equal(manifest.bin?.['jevgrep'], 'dist/cli.js');
+  assert.equal(manifest.bin?.['layagrep'], 'dist/cli.js');
   // Start-up must never resolve an unpinned version: every declared dependency is exact.
   for (const [name, range] of Object.entries(manifest.dependencies ?? {})) {
     assert.match(range, /^(?:npm:typescript@)?\d+\.\d+\.\d+$/, `${name} is not pinned: ${range}`);
@@ -126,11 +130,11 @@ test('the packed artifact installs into a clean prefix and runs there', { timeou
   const entry = join(packageRoot, 'dist', 'cli.js');
   const version = run(process.execPath, [entry, '--version'], workspace);
   assert.equal(version.code, 0, version.stderr);
-  assert.equal(version.stdout.trim(), `jevgrep ${manifest.version ?? ''}`);
+  assert.equal(version.stdout.trim(), `layagrep ${manifest.version ?? ''}`);
 
   const help = run(process.execPath, [entry, '--help'], workspace);
   assert.equal(help.code, 0);
-  assert.match(help.stdout, /^usage: jevgrep/);
+  assert.match(help.stdout, /^usage: layagrep/);
 
   const doctor = run(process.execPath, [entry, 'doctor', '--config', 'missing.json'], workspace);
   assert.equal(doctor.code, 2, 'the command layer must be reachable from the installed artifact');

@@ -41,7 +41,7 @@ function toPosix(path: string): string {
 /** Create a workspace with a repository, a trusted configuration and an isolated cache. */
 export function createWorkspace(options: WorkspaceOptions = {}): Workspace {
   // Match the canonical paths used by production, including Windows 8.3 temp aliases.
-  const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'jevgrep-test-')));
+  const root = realpathSync.native(mkdtempSync(join(tmpdir(), 'layagrep-test-')));
   const repositoryRoot = options.repositoryRoot ?? join(root, 'repository');
   if (options.repositoryRoot === undefined) {
     mkdirSync(repositoryRoot, { recursive: true });
@@ -56,14 +56,14 @@ export function createWorkspace(options: WorkspaceOptions = {}): Workspace {
     write(path, content);
   }
 
-  const base = createDefaultConfiguration(toPosix(resolve(repositoryRoot)), 'jev-1.13.0');
+  const base = createDefaultConfiguration(toPosix(resolve(repositoryRoot)), 'convaiinnovations/laya');
   const config = options.configure?.(base) ?? base;
-  const configPath = join(root, 'jevgrep.config.json');
+  const configPath = join(root, 'layagrep.config.json');
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
   const env: NodeJS.ProcessEnv = {
-    JEVGREP_CACHE_HOME: join(root, 'cache'),
-    JEVGREP_CONFIG_HOME: join(root, 'configuration'),
+    LAYAGREP_CACHE_HOME: join(root, 'cache'),
+    LAYAGREP_CONFIG_HOME: join(root, 'configuration'),
   };
   return {
     root,

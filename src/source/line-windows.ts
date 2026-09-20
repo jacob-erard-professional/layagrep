@@ -1,12 +1,12 @@
 /**
- * Line-window chunker (JG-012, specification 5.4, requirements R3 and R4).
+ * Line-window chunker (LG-012, specification 5.4, requirements R3 and R4).
  *
  * This is the fallback chunker: contiguous, line-aligned windows with bounded token,
  * byte and line limits and bounded overlap. It carries no file-system, scheduling or
  * provider behaviour - it is a pure function over one prepared snapshot, which is the
  * seam the plan asks the chunker to hide behind (`fragment(snapshot)`).
  *
- * The syntax chunker (JG-015) will produce structural ranges through the same output
+ * The syntax chunker (LG-015) will produce structural ranges through the same output
  * shape; `classification` says which one produced a window.
  */
 import { countReferenceTokens } from '../response/token-counter.ts';
@@ -32,19 +32,19 @@ export type WindowLimits = {
 };
 
 export const DEFAULT_WINDOW_LIMITS: WindowLimits = Object.freeze({
-  targetTokens: 800,
-  maxTokens: 1_600,
-  maxBytes: 8 * 1_024,
-  targetLines: 80,
-  maxLines: 120,
-  overlapLines: 8,
+  targetTokens: 80,
+  maxTokens: 100,
+  maxBytes: 1_536,
+  targetLines: 20,
+  maxLines: 32,
+  overlapLines: 4,
 });
 
 /** Maximum overlap allowed by specification 5.4. */
 export const MAX_WINDOW_OVERLAP_LINES = 8;
 
 /** Chunker identity; part of fragment metadata and of evaluation identity. */
-export const LINE_WINDOW_CHUNKER_VERSION = 'jevgrep-line-windows-1';
+export const LINE_WINDOW_CHUNKER_VERSION = 'layagrep-line-windows-1';
 
 /** One contiguous original range prepared for evaluation. */
 export type FragmentWindow = {

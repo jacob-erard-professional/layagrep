@@ -14,8 +14,8 @@ export const validConfiguration = {
   repository_root: 'C:/work/synthetic-repository',
   remote_evaluation_enabled: false,
   provider: {
-    adapter: 'typesafe-direct', base_url: 'https://api.typesafe.ai',
-    api_key_env: 'TYPESAFE_API_KEY', model: 'synthetic-model-v1',
+    adapter: 'laya-local', base_url: 'http://127.0.0.1:8000',
+    api_key_env: 'LAYAGREP_LOCAL_TOKEN', model: 'convaiinnovations/laya',
   },
   search: { deadline_ms: 300_000, concurrency: 4, require_fit: true, default_response_tokens: 4_000, max_response_tokens: 16_000, threshold: 0.5 },
   scan_caps: {

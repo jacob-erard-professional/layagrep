@@ -1,5 +1,5 @@
 /**
- * Freshness of selected sources before rendering (JG-021).
+ * Freshness of selected sources before rendering (LG-021).
  *
  * A score was computed on a snapshot. If the file changed or disappeared while the
  * search was running, returning its current lines with that score would attach a

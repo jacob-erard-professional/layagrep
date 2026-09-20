@@ -27,7 +27,7 @@ export type ScanCap = typeof SCAN_CAP_KEYS[number];
 
 export const EXCLUSION_REASONS = [
   'administrative', 'credential_file', 'operator_denied', 'gitignored',
-  'jevgrepignored', 'dependency', 'build_output', 'generated', 'minified',
+  'layagrepignored', 'dependency', 'build_output', 'generated', 'minified',
   'unsupported_encoding', 'binary', 'file_too_large', 'credential_pattern',
   'empty', 'whitespace_only', 'unsupported_long_line',
   'link', 'outside_root', 'not_regular_file',
@@ -185,15 +185,15 @@ export const configurationSchema = refine(object({
   remote_evaluation_enabled: booleanValue,
   provider: object({
     base_url: refine(textValue(256), (value, path) => {
-      requireContract(/^https:\/\/(?:api\.typesafe\.ai|ai-gateway\.vercel\.sh|openrouter\.ai)\/?$/.test(value), path,
-        'unsupported provider endpoint');
+      requireContract(/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d{1,5})?\/?$/.test(value), path,
+        'Laya endpoint must be loopback HTTP');
     }),
     api_key_env: refine(textValue(128), (value, path) => {
       requireContract(/^[A-Za-z_][A-Za-z0-9_]*$/.test(value), path, 'expected an environment variable name');
     }),
     model: identifier,
   }, {
-    adapter: enumeration(['typesafe-direct', 'vercel-ai-gateway', 'openrouter']),
+    adapter: enumeration(['laya-local']),
     pricing: nullable(pricingSchema),
   }),
   search: object({
@@ -228,25 +228,13 @@ export const configurationSchema = refine(object({
     `${path}.search`, 'default response budget exceeds maximum');
   const pricing = value.provider.pricing;
   requireContract(pricing == null || pricing.output_usd_per_million_tokens === 0,
-    `${path}.provider.pricing`, 'only free-output Jev pricing is currently supported');
+    `${path}.provider.pricing`, 'only free-output decision-model pricing is supported');
   requireContract(pricing == null || pricing.model === value.provider.model, `${path}.provider.pricing`, 'pricing must match the configured model');
   requireContract(value.scan_caps.estimated_cost_usd === null || pricing != null,
     `${path}.scan_caps.estimated_cost_usd`, 'a USD cap requires a dated pricing record for the model');
-  const adapter = value.provider.adapter ?? 'typesafe-direct';
-  if (adapter === 'typesafe-direct') {
-    requireContract(/^https:\/\/api\.typesafe\.ai\/?$/.test(value.provider.base_url), `${path}.provider.base_url`,
-      'typesafe-direct requires https://api.typesafe.ai');
-  } else if (adapter === 'vercel-ai-gateway') {
-    requireContract(/^https:\/\/ai-gateway\.vercel\.sh\/?$/.test(value.provider.base_url), `${path}.provider.base_url`,
-      'vercel-ai-gateway requires https://ai-gateway.vercel.sh');
-    requireContract(value.provider.model === 'typesafe-ai/jev', `${path}.provider.model`,
-      'vercel-ai-gateway requires the typesafe-ai/jev model id');
-  } else {
-    requireContract(/^https:\/\/openrouter\.ai\/?$/.test(value.provider.base_url), `${path}.provider.base_url`,
-      'openrouter requires https://openrouter.ai');
-    requireContract(value.provider.model === 'typesafe/jev-1.13', `${path}.provider.model`,
-      'openrouter requires the typesafe/jev-1.13 model id');
-  }
+  requireContract(value.provider.adapter === 'laya-local', `${path}.provider.adapter`, 'only laya-local is supported');
+  requireContract(value.provider.model === 'convaiinnovations/laya', `${path}.provider.model`,
+    'laya-local requires convaiinnovations/laya');
 });
 export type Configuration = Infer<typeof configurationSchema>;
 
@@ -257,8 +245,8 @@ export function createDefaultConfiguration(repositoryRoot: string, model: string
     repository_root: repositoryRoot,
     remote_evaluation_enabled: false,
     provider: {
-      adapter: 'typesafe-direct', base_url: 'https://api.typesafe.ai',
-      api_key_env: 'TYPESAFE_API_KEY', model,
+      adapter: 'laya-local', base_url: 'http://127.0.0.1:8000',
+      api_key_env: 'LAYAGREP_LOCAL_TOKEN', model,
     },
     search: { deadline_ms: 300_000, concurrency: 4, require_fit: true, ...defaultResponseLimits, threshold: 0.5 },
     scan_caps: Object.fromEntries(SCAN_CAP_KEYS.map((key) => [key, null])),

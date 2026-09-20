@@ -7,7 +7,7 @@ import { after, test } from 'node:test';
 import { repoRoot } from './helpers/cli-runner.ts';
 
 /**
- * JG-001 acceptance criterion: a type error must fail the type check with a non-zero exit
+ * LG-001 acceptance criterion: a type error must fail the type check with a non-zero exit
  * code, and `npm run typecheck` (the documented command) must propagate that code.
  *
  * The proof is a chain, because injecting a deliberate error into the shared tree is not
@@ -55,7 +55,7 @@ function projectTypeCheck(cwd: string = repoRoot): CommandResult {
  * It lives outside the checkout, so it cannot disturb a concurrent run.
  */
 function scratchProject(contents: string): { readonly dir: string; readonly file: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'jevgrep-gate-'));
+  const dir = mkdtempSync(join(tmpdir(), 'layagrep-gate-'));
   scratchRoots.push(dir);
   const file = join(dir, 'probe.ts');
   writeFileSync(file, contents, 'utf8');

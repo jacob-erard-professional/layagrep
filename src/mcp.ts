@@ -1,5 +1,5 @@
 /**
- * Local stdio MCP server (JG-024).
+ * Local stdio MCP server (LG-024).
  *
  * A thin adapter over the shared engine: it validates protocol framing, exposes one
  * tool, and maps outcomes onto MCP results. It contains no search logic (requirement
@@ -8,7 +8,7 @@
  * (specification sections 4.1 and 5.1).
  *
  * This development transport implements stdio framing directly. SDK selection and
- * real Codex interoperability remain open in JG-006; local tests are not client
+ * real Codex interoperability remain open in LG-006; local tests are not client
  * qualification. Live tool calls still require explicit repository authorization,
  * remote enablement and a provider credential.
  *
@@ -131,7 +131,7 @@ export function runMcpServer(options: McpServerOptions): Promise<void> {
         send({ jsonrpc: '2.0', id: call.id, result: toolResult(outcome) });
       }
     } catch {
-      log('jevgrep mcp tool failure');
+      log('layagrep mcp tool failure');
       if (!call.controller.signal.aborted) {
         sendError(call.id, INTERNAL_ERROR, 'the search failed before a report could be produced');
       }
@@ -191,7 +191,7 @@ export function runMcpServer(options: McpServerOptions): Promise<void> {
           result: {
             protocolVersion,
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: 'jevgrep', version: options.serverVersion },
+            serverInfo: { name: 'layagrep', version: options.serverVersion },
             instructions: 'One tool: semantic_search_code. Evidence is returned as original excerpts under a response budget.',
           },
         });
@@ -252,7 +252,7 @@ export function runMcpServer(options: McpServerOptions): Promise<void> {
       parsed = JSON.parse(trimmed);
     } catch {
       sendError(null, PARSE_ERROR, 'invalid JSON message');
-      log('jevgrep mcp received an unparsable message');
+      log('layagrep mcp received an unparsable message');
       return;
     }
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {

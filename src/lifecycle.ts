@@ -1,5 +1,5 @@
 /**
- * Search lifecycle, cancellation, deadline and local diagnostics (JG-009).
+ * Search lifecycle, cancellation, deadline and local diagnostics (LG-009).
  *
  * Every stage of the engine receives the same `SearchContext`: one identity, one
  * clock, one stop signal and one deadline. Two stops are deliberately distinct
@@ -71,7 +71,7 @@ export class SearchLogger {
       return;
     }
     const rendered = Object.entries(fields).map(([key, value]) => `${key}=${String(value)}`).join(' ');
-    this.#write(`jevgrep ${level} search=${searchId} ${event}${rendered.length > 0 ? ` ${rendered}` : ''}`);
+    this.#write(`layagrep ${level} search=${searchId} ${event}${rendered.length > 0 ? ` ${rendered}` : ''}`);
   }
 }
 

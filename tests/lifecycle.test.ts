@@ -6,7 +6,7 @@ import { CONTRACT_LIMITS } from '../src/contracts.ts';
 import { ManualClock } from '../src/testing/manual-clock.ts';
 
 /**
- * Search lifecycle and local diagnostics (JG-009).
+ * Search lifecycle and local diagnostics (LG-009).
  *
  * Every stop is reachable without waiting for real time, an internal deadline and a
  * client cancellation stay distinguishable, and diagnostics never carry source text,

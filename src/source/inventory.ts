@@ -1,5 +1,5 @@
 /**
- * Deterministic inventory of the eligible scope (JG-010).
+ * Deterministic inventory of the eligible scope (LG-010).
  *
  * The inventory answers one question — which files may this search read — and it
  * answers it identically for every question asked about the same working tree. It
@@ -10,7 +10,7 @@
  *   1. authorized root and the requested scope;
  *   2. fixed administrative exclusions (`.git`, credential files, key material);
  *   3. operator deny rules from the trusted configuration;
- *   4. the `.gitignore` hierarchy plus the narrowing `.jevgrepignore`;
+ *   4. the `.gitignore` hierarchy plus the narrowing `.layagrepignore`;
  *   5. dependencies, build output, generated or minified artifacts and the
  *      configured size limit.
  * File extensions never decide eligibility. Content-based exclusions (binary bytes,
@@ -25,7 +25,7 @@ import type { IgnoreFile } from './ignore-rules.ts';
 
 /** Contract exclusion reasons this stage can produce. */
 export type InventoryExclusion =
-  | 'administrative' | 'credential_file' | 'operator_denied' | 'gitignored' | 'jevgrepignored'
+  | 'administrative' | 'credential_file' | 'operator_denied' | 'gitignored' | 'layagrepignored'
   | 'dependency' | 'build_output' | 'generated' | 'minified' | 'file_too_large'
   | 'empty' | 'link' | 'outside_root' | 'not_regular_file';
 
@@ -326,9 +326,9 @@ function directoryIgnoreFiles(
       found.push(gitignore);
     }
   }
-  const jevgrepignore = readIgnoreFile(root, relativeDirectory, '.jevgrepignore', true, options.maxFileBytes);
-  if (jevgrepignore !== null) {
-    found.push(jevgrepignore);
+  const layagrepignore = readIgnoreFile(root, relativeDirectory, '.layagrepignore', true, options.maxFileBytes);
+  if (layagrepignore !== null) {
+    found.push(layagrepignore);
   }
   return found;
 }
@@ -364,7 +364,7 @@ function considerFile(
   if (ignored.ignored) {
     accumulator.excluded.push({
       relativePath: file.relativePath,
-      reason: ignored.narrowing ? 'jevgrepignored' : 'gitignored',
+      reason: ignored.narrowing ? 'layagrepignored' : 'gitignored',
       isDirectory: false,
     });
     return;
@@ -437,7 +437,7 @@ function walkDirectory(
       const ignoredDirectory = isIgnored(stack, relativePath, true);
       if (ignoredDirectory.ignored) {
         accumulator.excludedDirectories.push({
-          relativePath, reason: ignoredDirectory.narrowing ? 'jevgrepignored' : 'gitignored', isDirectory: true,
+          relativePath, reason: ignoredDirectory.narrowing ? 'layagrepignored' : 'gitignored', isDirectory: true,
         });
         continue;
       }

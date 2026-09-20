@@ -6,7 +6,7 @@ import { repoRoot } from './helpers/cli-runner.ts';
 
 const fixturesRoot = join(repoRoot, 'tests', 'fixtures', 'repositories');
 
-test('JG-003 fixtures cover reusable synthetic repository shapes', () => {
+test('LG-003 fixtures cover reusable synthetic repository shapes', () => {
   const expected = [
     ['access-gateway', 'src/index.ts'],
     ['access-gateway', 'src/broken.ts'],

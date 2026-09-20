@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 
 import { createSearchEngine } from '../src/engine.ts';
-import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/jev.ts';
-import { JevAdapter, ProviderError, buildRequestPayload } from '../src/evaluation/jev.ts';
+import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/laya.ts';
+import { LayaAdapter, ProviderError, buildRequestPayload } from '../src/evaluation/laya.ts';
 import type { SearchError, SearchResult } from '../src/contracts.ts';
 import { searchResultSchema } from '../src/contracts.ts';
 import { countReferenceTokens } from '../src/response/token-counter.ts';
@@ -14,7 +14,7 @@ import { ManualClock } from '../src/testing/manual-clock.ts';
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 /**
- * The shared engine end to end (JG-014), with freshness (JG-021) and the reporting
+ * The shared engine end to end (LG-014), with freshness (LG-021) and the reporting
  * rules of specification 4.2 and 4.3.
  *
  * Every search here runs against a scripted provider: the suite is offline, needs no
@@ -49,7 +49,7 @@ type ProviderHooks = {
 };
 
 class ScriptedProviderClient implements ProviderClient {
-  readonly model = 'jev-1.13.0';
+  readonly model = 'convaiinnovations/laya';
   calls = 0;
   readonly seenPaths: string[] = [];
   readonly #scorer: Scorer;
@@ -143,7 +143,7 @@ test('a linked source ancestor introduced after preparation is refused before pr
       fs.renameSync(join(space.repositoryRoot, 'src'), outside);
       fs.symlinkSync(outside, join(space.repositoryRoot, 'src'), process.platform === 'win32' ? 'junction' : 'dir');
     }
-    return 'jev-1.13.0';
+    return 'convaiinnovations/laya';
   } });
   const result = await createSearchEngine({ configuration: space.loaded, provider, env: space.env }).search({
     query: 'Where is the cache invalidated?', scope: ['.'], max_context_tokens: 4_000, allow_partial_scan: true,
@@ -159,7 +159,7 @@ test('a deadline expiring during source revalidation reserves and sends no provi
   const provider = new ScriptedProviderClient(() => 0.9);
   let planned = false;
   let expired = false;
-  Object.defineProperty(provider, 'model', { get() { planned = true; return 'jev-1.13.0'; } });
+  Object.defineProperty(provider, 'model', { get() { planned = true; return 'convaiinnovations/laya'; } });
   const root = space.loaded.sourceRoot;
   const resolve = root.resolveEntry.bind(root);
   t.mock.method(root, 'resolveEntry', (path: string) => {
@@ -273,7 +273,7 @@ test('unknown usage stays unknown and is reported as such', async () => {
   assert.equal(result.report.usage.provider_input_tokens_reported, null);
   assert.equal(result.report.usage.provider_input_tokens_known_subtotal, 0);
   assert.ok(result.report.usage.provider_input_tokens_estimated > 0, 'a conservative reservation survives');
-  assert.equal(result.report.usage.attempts_with_unknown_usage, 1);
+  assert.equal(result.report.usage.attempts_with_unknown_usage, 3);
   assert.ok(result.report.stop_reasons.includes('USAGE_UNKNOWN'));
 });
 
@@ -290,7 +290,7 @@ test('an identical repeated search reuses every evaluation without a new attempt
   assert.equal(second.report.fragments.cache_reused, 3);
   assert.equal(second.report.fragments.remote_evaluated, 0);
   assert.equal(second.report.usage.provider_request_attempts, 0);
-  assert.equal(provider.calls, 1, 'the second search dispatches nothing');
+  assert.equal(provider.calls, 3, 'the second search dispatches nothing');
   assert.deepEqual(second.excerpts.map((excerpt) => excerpt.path), first.excerpts.map((excerpt) => excerpt.path));
 });
 
@@ -311,7 +311,7 @@ test('a file changed during evaluation is omitted, reported and never re-evaluat
   assert.ok(result.report.stop_reasons.includes('SOURCE_CHANGED'));
   assert.ok(result.excerpts.every((excerpt) => excerpt.path !== 'src/cache.ts'),
     'a stale file never appears with a score computed on older content');
-  assert.equal(provider.calls, 1, 'no paid re-evaluation repairs a stale source');
+  assert.equal(provider.calls, 3, 'no paid re-evaluation repairs a stale source');
 });
 
 test('the freshness tracker checks each candidate file at most once', () => {
@@ -347,7 +347,7 @@ test('an enabled cap rejects an oversized scan before any dispatch', async () =>
   assert.equal(result.report.selection.outcome, 'preflight_rejected');
   assert.ok(result.report.stop_reasons.includes('SCOPE_EXCEEDS_SCAN_BUDGET'));
   assert.deepEqual(result.report.preflight.enabled_caps, { request_attempts: 0 });
-  assert.equal(result.report.preflight.estimated_required_caps['request_attempts'], 1,
+  assert.equal(result.report.preflight.estimated_required_caps['request_attempts'], 3,
     'the rejection states the requirement in the cap’s own unit');
 });
 
@@ -391,10 +391,10 @@ test('partial scanning stops on a whole-batch prefix without treating the cap as
   const result = asResult((await engine.search({ query: 'values', allow_partial_scan: true })).outcome);
   assert.equal(provider.calls, 1);
   assert.equal(result.status, 'partial');
-  assert.equal(result.report.fragments.not_evaluated, 6);
+  assert.equal(result.report.fragments.not_evaluated, 69);
   assert.ok(result.report.stop_reasons.includes('SCAN_CAP_REACHED'));
   assert.ok(!result.report.stop_reasons.includes('PROVIDER_UNAVAILABLE'));
-  assert.deepEqual(provider.seenPaths, Object.keys(files).slice(0, 64));
+  assert.deepEqual(provider.seenPaths, Object.keys(files).slice(0, 1));
 });
 
 test('incomplete preparation reports unknown totals and refuses a required full scan', async () => {
@@ -420,8 +420,8 @@ test('a dispatched cancellation keeps its attempts, body bytes and unknown usage
   const space = workspace();
   const controller = new AbortController();
   let dispatchedBytes = 0;
-  const provider = new JevAdapter({
-    baseUrl: 'https://api.typesafe.ai', model: 'jev-1.13.0', apiKey: 'synthetic',
+  const provider = new LayaAdapter({
+    baseUrl: 'http://127.0.0.1:8000', model: 'convaiinnovations/laya',
     transport: async (request) => {
       dispatchedBytes = Buffer.byteLength(request.body);
       controller.abort();
@@ -457,8 +457,8 @@ test('reported usage over an enabled estimate cap stops subsequent dispatch', as
 test('deadline cancellation of the first dispatched attempt returns partial, not a fatal provider error', async () => {
   const space = workspace();
   const clock = new ManualClock();
-  const provider = new JevAdapter({
-    baseUrl: 'https://api.typesafe.ai', model: 'jev-1.13.0', apiKey: 'synthetic',
+  const provider = new LayaAdapter({
+    baseUrl: 'http://127.0.0.1:8000', model: 'convaiinnovations/laya',
     transport: async () => {
       clock.advanceBy(space.loaded.config.search.deadline_ms + 1);
       await Promise.resolve();
@@ -479,7 +479,7 @@ test('byte accounting matches the actual serialized payload including escaped te
   const space = workspace();
   let expectedBytes = 0;
   const provider = new ScriptedProviderClient(() => 0.9, { onCall: (batch) => {
-    expectedBytes += Buffer.byteLength(JSON.stringify(buildRequestPayload(batch, 'jev-1.13.0')));
+    expectedBytes += Buffer.byteLength(JSON.stringify(buildRequestPayload(batch, 'convaiinnovations/laya')));
   } });
   const engine = createSearchEngine({ configuration: space.loaded, provider });
   const result = asResult((await engine.search({ query: 'quotes " and é\n\\' })).outcome);
@@ -539,13 +539,6 @@ test('remote evaluation disabled is an actionable refusal before any excerpt lea
   const error = asError((await engine.search({ query: 'cache invalidation' })).outcome);
   assert.equal(error.error.code, 'REMOTE_DISABLED');
   assert.equal(error.status, 'rejected');
-});
-
-test('a missing credential is reported before any provider request', async () => {
-  const space = workspace();
-  const engine = createSearchEngine({ configuration: space.loaded, env: {} });
-  const error = asError((await engine.search({ query: 'cache invalidation' })).outcome);
-  assert.equal(error.error.code, 'CREDENTIAL_MISSING');
 });
 
 test('an expired deadline stops new dispatch and returns flagged partial evidence', async () => {

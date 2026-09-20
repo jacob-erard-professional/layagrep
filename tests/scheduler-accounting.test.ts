@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createSearchEngine } from '../src/engine.ts';
-import { ProviderError, type ProviderClient } from '../src/evaluation/jev.ts';
+import { ProviderError, type ProviderClient } from '../src/evaluation/laya.ts';
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 for (const cap of [null, 1]) {
@@ -12,7 +12,7 @@ for (const cap of [null, 1]) {
     }) });
     try {
       let calls = 0;
-      const provider: ProviderClient = { model: 'jev-1.13.0', async evaluateBatch(batch) {
+      const provider: ProviderClient = { model: 'convaiinnovations/laya', async evaluateBatch(batch) {
         if (++calls === 1) throw new ProviderError({ code: 'PROVIDER_RATE_LIMIT', message: 'refused', retryable: true, ambiguous: false });
         return { scores: new Map(batch.items.map((item) => [item.id, 0.9])), invalid: [],
           usage: { inputTokens: 100, outputTokens: 0 }, requestedModel: this.model, returnedModel: this.model,

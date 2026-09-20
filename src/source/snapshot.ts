@@ -1,5 +1,5 @@
 /**
- * Source snapshots and exact source references (JG-011).
+ * Source snapshots and exact source references (LG-011).
  *
  * A snapshot is the bytes of one eligible file, read once, hashed once, and indexed
  * by line. Every excerpt the engine can ever return is a contiguous slice of a
@@ -186,7 +186,7 @@ export class SourceSnapshot {
    * The slice runs from the first character of `startLine` to the first character of
    * the line after `endLine`, so it ends with that line's own line ending when the
    * file has one there. Two adjacent ranges therefore concatenate into exactly the
-   * slice of their union, which is what overlap merging in JG-019 relies on.
+   * slice of their union, which is what overlap merging in LG-019 relies on.
    */
   sliceLines(startLine: number, endLine: number): LineSlice {
     this.#assertLine(startLine, 'start line');
@@ -271,7 +271,7 @@ export function createSnapshot(
   );
 }
 
-/** SHA-256 of arbitrary bytes, used for freshness revalidation in JG-021. */
+/** SHA-256 of arbitrary bytes, used for freshness revalidation in LG-021. */
 export function hashBytes(bytes: Buffer): string {
   return createHash('sha256').update(bytes).digest('hex');
 }

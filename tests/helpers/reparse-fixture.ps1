@@ -8,7 +8,7 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
-public static class JevGrepReparseFixture {
+public static class LayaGrepReparseFixture {
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
   static extern SafeFileHandle CreateFileW(string path, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
   [DllImport("kernel32.dll", SetLastError=true)]
@@ -26,4 +26,4 @@ public static class JevGrepReparseFixture {
   }
 }
 '@
-[Console]::WriteLine([JevGrepReparseFixture]::Set($Target, $Remove.IsPresent))
+[Console]::WriteLine([LayaGrepReparseFixture]::Set($Target, $Remove.IsPresent))

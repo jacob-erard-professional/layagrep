@@ -4,7 +4,7 @@ import { windowInputOf, windowInputsOf } from '../src/source/window-input.ts';
 import { lineWindows } from '../src/source/line-windows.ts';
 
 /**
- * JG-012 integration seam: a prepared snapshot (JG-011, M) must reach the window chunker
+ * LG-012 integration seam: a prepared snapshot (LG-011, M) must reach the window chunker
  * without the chunker depending on the snapshot module. The adapter takes the small
  * structural view the chunker needs, so the two modules can be developed, reviewed and
  * replaced independently.

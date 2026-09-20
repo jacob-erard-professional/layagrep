@@ -1,5 +1,5 @@
 /**
- * CLI command execution (JG-023).
+ * CLI command execution (LG-023).
  *
  * The parser (`cli-args.ts`) decides *what* was asked; this module performs it
  * against the shared engine and maps the outcome onto the documented exit codes of
@@ -13,10 +13,9 @@
  * `doctor`, `inspect` and `cache clear` never need a credential and never dispatch a
  * provider request.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import process from 'node:process';
-import { resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import { dirname, resolve } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 
 import type { CliCommand } from './cli-args.ts';
@@ -28,12 +27,11 @@ import { createSearchError } from './contracts.ts';
 import { SearchEngine, createSearchEngine } from './engine.ts';
 import { ScoreCache } from './evaluation/cache.ts';
 import { inspectScope, renderInspection } from './inspect.ts';
-import {
-  configurationHome, configuredGlobalProvider, createGlobalProfile, createProfile, discoverProjectConfiguration,
-  environmentWithProfileSecrets, PROVIDER_KEY_VARIABLES, PROVIDER_LABELS, updateGlobalProfile, validateProfileLocation, type InitProvider,
-} from './init.ts';
+import { discoverProjectConfiguration } from './init.ts';
 import { runMcpServer } from './mcp.ts';
-import { LocalDirectory } from './local-directory.ts';
+import {
+  platformSummary, readRuntimeLog, runtimePaths, runtimeStatus, setupRuntime, startRuntime, stopRuntime,
+} from './runtime-manager.ts';
 import { CLI_EXIT_CODES, toCliSearchResponse } from './search-response.ts';
 import { REFERENCE_COUNTER_ID, referenceCounter } from './response/token-counter.ts';
 
@@ -59,7 +57,7 @@ function load(command: { config?: string }, io: CliIo, deps: CommandDependencies
   try {
     config = command.config ?? discoverProjectConfiguration(cwd, deps.env ?? process.env);
   } catch (cause) {
-    io.err(`jevgrep: INVALID_CONFIG: ${cause instanceof Error ? cause.message : 'no project profile was found'}`);
+    io.err(`layagrep: INVALID_CONFIG: ${cause instanceof Error ? cause.message : 'no project profile was found'}`);
     return CLI_EXIT_CODES.rejected;
   }
   try {
@@ -69,10 +67,10 @@ function load(command: { config?: string }, io: CliIo, deps: CommandDependencies
     });
   } catch (cause) {
     if (cause instanceof ConfigurationError) {
-      io.err(`jevgrep: ${cause.code}: ${cause.detail}`);
+      io.err(`layagrep: ${cause.code}: ${cause.detail}`);
       return CLI_EXIT_CODES.rejected;
     }
-    io.err(`jevgrep: the configuration could not be loaded: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
+    io.err(`layagrep: the configuration could not be loaded: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
     return CLI_EXIT_CODES.error;
   }
 }
@@ -85,7 +83,8 @@ function engineFor(configuration: LoadedConfiguration, deps: CommandDependencies
 }
 
 function commandEnvironment(loaded: LoadedConfiguration, deps: CommandDependencies): NodeJS.ProcessEnv {
-  return environmentWithProfileSecrets(loaded.configPath, deps.env ?? process.env, loaded.sourceRoot, loaded.config.provider.api_key_env);
+  void loaded;
+  return deps.env ?? process.env;
 }
 
 /** Run one parsed command and return the process exit code. */
@@ -95,8 +94,12 @@ export async function executeCommand(
   deps: CommandDependencies = {},
 ): Promise<number> {
   switch (command.kind) {
-    case 'init':
-      return runInit(command, io, deps);
+    case 'setup': return runSetup(command, io, deps);
+    case 'start': return runStart(command, io, deps);
+    case 'stop': return runStop(command, io, deps);
+    case 'restart': return runRestart(command, io, deps);
+    case 'status': return runStatus(command, io, deps);
+    case 'logs': return runLogs(command, io, deps);
     case 'doctor':
       return runDoctor(command, io, deps);
     case 'inspect':
@@ -110,60 +113,73 @@ export async function executeCommand(
   }
 }
 
-async function runInit(command: Extract<CliCommand, { kind: 'init' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
-  const prompt = deps.prompt ?? (async (question: string): Promise<string> => {
-    const terminal = createInterface({ input: deps.input ?? process.stdin, output: deps.output ?? process.stdout });
-    try { return await terminal.question(question); } finally { terminal.close(); }
-  });
+function lifecycleRoot(root: string | undefined, deps: CommandDependencies): string {
+  const cwd = deps.cwd ?? process.cwd();
+  if (root !== undefined) return resolve(cwd, root);
   try {
-    const environment = deps.env ?? process.env;
-    const root = command.global ? undefined : validateProfileLocation(resolve(deps.cwd ?? process.cwd(), command.root), environment);
-    if (command.global) new LocalDirectory(configurationHome(environment));
-    const savedProvider = configuredGlobalProvider(environment);
-    const answer = command.provider ?? savedProvider ?? (await prompt('Provider [1 TypeSafe AI, 2 Vercel AI Gateway, 3 OpenRouter] (1): ')).trim();
-    let provider: InitProvider;
-    if (answer === '' || answer === '1' || answer === 'typesafe') provider = 'typesafe';
-    else if (answer === '2' || answer === 'vercel') provider = 'vercel';
-    else if (answer === '3' || answer === 'openrouter') provider = 'openrouter';
-    else throw new Error('provider must be 1/typesafe, 2/vercel or 3/openrouter');
-    const variable = PROVIDER_KEY_VARIABLES[provider];
-    let globalCreated: ReturnType<typeof createGlobalProfile> | undefined;
-    if (savedProvider === undefined || (command.provider !== undefined && savedProvider !== provider)) {
-      const existing = environment[variable]?.trim();
-      const apiKey = existing && existing.length > 0 ? existing : (await prompt(`${variable} (stored outside repositories): `)).trim();
-      globalCreated = savedProvider === undefined
-        ? createGlobalProfile({ provider, apiKey, env: environment, ...(root === undefined ? {} : { repositoryRoot: root }) })
-        : updateGlobalProfile({ provider, apiKey, env: environment, ...(root === undefined ? {} : { repositoryRoot: root }) });
-    }
-    if (command.global) {
-      io.out(`configured JevGrep globally\nsettings: ${globalCreated?.settingsPath ?? 'already configured'}\nsecrets: ${globalCreated?.secretsPath ?? 'already configured'}\nprovider: ${PROVIDER_LABELS[provider]}\nnext: run 'jevgrep init' inside a repository`);
-      return CLI_EXIT_CODES.complete;
-    }
-    if (root === undefined) throw new Error('project authorization is missing');
-    const providerLabel = PROVIDER_LABELS[provider];
-    const input = (deps.input ?? process.stdin) as Readable & { isTTY?: boolean };
-    const interactive = deps.prompt !== undefined || input.isTTY === true;
-    let remoteEvaluationEnabled: boolean | undefined;
-    if (interactive) {
-      io.out(`repository: ${root.path}`);
-      const consent = await prompt(`Allow sending eligible source excerpts from this repository to ${providerLabel}? [y/N] `);
-      remoteEvaluationEnabled = /^(y|yes)$/i.test(consent.trim());
-    }
-    root.assertCurrent();
-    const profile = createProfile({
-      root: root.path, provider, env: environment,
-      replaceProvider: command.provider !== undefined,
-      ...(remoteEvaluationEnabled === undefined ? {} : { remoteEvaluationEnabled }),
-    });
-    io.out(`authorized JevGrep project\nconfiguration: ${profile.configPath}\nprovider: ${providerLabel}\nremote evaluation: ${profile.remoteEvaluationEnabled ? 'enabled' : 'disabled'}\n${profile.remoteEvaluationEnabled ? 'next: jevgrep search --query "your question"' : 'next: jevgrep inspect; review the configuration before enabling remote_evaluation_enabled'}`);
+    return dirname(dirname(discoverProjectConfiguration(cwd, deps.env ?? process.env)));
+  } catch { return resolve(cwd); }
+}
+
+async function runSetup(command: Extract<CliCommand, { kind: 'setup' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  try {
+    const paths = await setupRuntime(resolve(deps.cwd ?? process.cwd(), command.root), command.port,
+      (stage) => io.out(`setup: ${stage}`));
+    io.out(`LayaGrep is installed in ${paths.home}\nmodel: convaiinnovations/laya\nnext: layagrep start`);
     return CLI_EXIT_CODES.complete;
   } catch (cause) {
-    io.err(`jevgrep: init failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
-    return CLI_EXIT_CODES.rejected;
+    io.err(`layagrep: setup failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
+    return CLI_EXIT_CODES.error;
   }
 }
 
-function runDoctor(command: Extract<CliCommand, { kind: 'doctor' }>, io: CliIo, deps: CommandDependencies): number {
+async function runStart(command: Extract<CliCommand, { kind: 'start' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  try {
+    const status = await startRuntime(lifecycleRoot(command.root, deps));
+    io.out(`Laya server running on http://127.0.0.1:${String(status.metadata?.port ?? 8000)} (PID ${String(status.metadata?.pid ?? 'unknown')})`);
+    return CLI_EXIT_CODES.complete;
+  } catch (cause) { io.err(`layagrep: start failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`); return CLI_EXIT_CODES.error; }
+}
+
+async function runStop(command: Extract<CliCommand, { kind: 'stop' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  try { await stopRuntime(lifecycleRoot(command.root, deps)); io.out('Laya server stopped'); return CLI_EXIT_CODES.complete; }
+  catch (cause) { io.err(`layagrep: stop failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`); return CLI_EXIT_CODES.error; }
+}
+
+async function runRestart(command: Extract<CliCommand, { kind: 'restart' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  const root = lifecycleRoot(command.root, deps);
+  try {
+    await stopRuntime(root);
+    const status = await startRuntime(root);
+    io.out(`Laya server restarted on http://127.0.0.1:${String(status.metadata?.port ?? 8000)} (PID ${String(status.metadata?.pid ?? 'unknown')})`);
+    return CLI_EXIT_CODES.complete;
+  } catch (cause) { io.err(`layagrep: restart failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`); return CLI_EXIT_CODES.error; }
+}
+
+async function runStatus(command: Extract<CliCommand, { kind: 'status' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  try {
+    const status = await runtimeStatus(lifecycleRoot(command.root, deps));
+    if (command.json) io.out(JSON.stringify({ state: status.state, root: status.paths.root, ...(status.metadata ?? {}), ...(status.detail === undefined ? {} : { detail: status.detail }) }));
+    else io.out(`Laya server: ${status.state}${status.metadata === undefined ? '' : ` (PID ${String(status.metadata.pid)}, port ${String(status.metadata.port)})`}${status.detail === undefined ? '' : ` — ${status.detail}`}`);
+    return status.state === 'stale' ? CLI_EXIT_CODES.error : CLI_EXIT_CODES.complete;
+  } catch (cause) { io.err(`layagrep: status failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`); return CLI_EXIT_CODES.error; }
+}
+
+async function runLogs(command: Extract<CliCommand, { kind: 'logs' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
+  const root = lifecycleRoot(command.root, deps);
+  const initial = readRuntimeLog(root, command.lines);
+  if (initial.length > 0) io.out(initial);
+  if (!command.follow) return CLI_EXIT_CODES.complete;
+  let previous = initial;
+  while (deps.signal?.aborted !== true) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+    const current = readRuntimeLog(root, command.lines);
+    if (current !== previous) { io.out(current.startsWith(previous) ? current.slice(previous.length).trimStart() : current); previous = current; }
+  }
+  return CLI_EXIT_CODES.interrupted;
+}
+
+async function runDoctor(command: Extract<CliCommand, { kind: 'doctor' }>, io: CliIo, deps: CommandDependencies): Promise<number> {
   const loaded = load(command, io, deps);
   if (typeof loaded === 'number') {
     return loaded;
@@ -172,6 +188,14 @@ function runDoctor(command: Extract<CliCommand, { kind: 'doctor' }>, io: CliIo, 
   for (const line of renderDoctorReport(report)) {
     io.out(line);
   }
+  const runtime = await runtimeStatus(loaded.repositoryRoot);
+  const paths = runtimePaths(loaded.repositoryRoot);
+  io.out(`platform           ${platformSummary()}`);
+  io.out(`runtime directory  ${paths.home}`);
+  io.out(`managed uv         ${existsSync(paths.uv) ? 'installed' : 'missing'}`);
+  io.out(`managed Python     ${existsSync(paths.python) ? 'installed' : 'missing'}`);
+  io.out(`model cache        ${existsSync(paths.hfHome) ? paths.hfHome : 'missing'}`);
+  io.out(`Laya server        ${runtime.state}`);
   return CLI_EXIT_CODES.complete;
 }
 
@@ -191,7 +215,7 @@ function runInspect(command: Extract<CliCommand, { kind: 'inspect' }>, io: CliIo
     }
     return CLI_EXIT_CODES.complete;
   } catch (cause) {
-    io.err(`jevgrep: the scope could not be inspected: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
+    io.err(`layagrep: the scope could not be inspected: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
     return CLI_EXIT_CODES.rejected;
   }
 }
@@ -216,12 +240,12 @@ async function runSearch(
       const response = toCliSearchResponse(outcome, referenceCounter);
       io.out(response.stdout);
       if (measuredTokens !== null) {
-        io.err(`jevgrep: response measured at ${String(measuredTokens)} ${REFERENCE_COUNTER_ID} tokens of ${String(command.request.max_context_tokens ?? loaded.config.search.default_response_tokens)}`);
+        io.err(`layagrep: response measured at ${String(measuredTokens)} ${REFERENCE_COUNTER_ID} tokens of ${String(command.request.max_context_tokens ?? loaded.config.search.default_response_tokens)}`);
       }
       return response.exitCode;
     } catch (cause) {
       // A payload that does not satisfy its own contract is a defect, not a result.
-      io.err(`jevgrep: the produced response failed contract validation: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
+      io.err(`layagrep: the produced response failed contract validation: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
       io.out(JSON.stringify(createSearchError('RESOURCE_EXHAUSTED', 'invalid-response')));
       return CLI_EXIT_CODES.error;
     }
@@ -232,11 +256,11 @@ async function runSearch(
     human = renderHumanOutcome(outcome, referenceCounter);
   } catch (cause) {
     if (!(cause instanceof RangeError)) throw cause;
-    io.out('jevgrep: rejected\nerror: RESPONSE_BUDGET_TOO_SMALL\nIncrease the human response budget or narrow the scope.');
+    io.out('layagrep: rejected\nerror: RESPONSE_BUDGET_TOO_SMALL\nIncrease the human response budget or narrow the scope.');
     return CLI_EXIT_CODES.rejected;
   }
   io.out(human.text);
-  io.err(`jevgrep: human rendering measured at ${String(human.tokenCount)} ${human.counter} tokens, `
+  io.err(`layagrep: human rendering measured at ${String(human.tokenCount)} ${human.counter} tokens, `
     + `${String(human.byteCount)} bytes, ${String(human.excerptCount)} excerpt(s); `
     + `human and --json payloads are budgeted separately`);
   const cancelled = 'error' in outcome
@@ -262,11 +286,11 @@ function runCacheClear(
   });
   const removed = cache.clear();
   if (cache.stats.failures > 0) {
-    io.err('jevgrep: the configured cache could not be completely cleared; check local access or an active writer');
+    io.err('layagrep: the configured cache could not be completely cleared; check local access or an active writer');
     return CLI_EXIT_CODES.error;
   }
   io.out(`removed ${String(removed)} cached evaluation(s) from ${loaded.cacheDirectory}`);
-  io.err('jevgrep: only the cache configured by this configuration was cleared; no repository file was written');
+  io.err('layagrep: only the cache configured by this configuration was cleared; no repository file was written');
   return CLI_EXIT_CODES.complete;
 }
 
@@ -283,7 +307,7 @@ async function runMcp(
   const input = deps.input ?? process.stdin;
   const output = deps.output ?? process.stdout;
   const errorOutput = deps.errorOutput ?? process.stderr;
-  errorOutput.write(`jevgrep: mcp server ready for ${loaded.repositoryRoot} (no scan, no provider call at startup)\n`);
+  errorOutput.write(`layagrep: mcp server ready for ${loaded.repositoryRoot} (no scan, no provider call at startup)\n`);
 
   await runMcpServer({
     engine, input, output, errorOutput,

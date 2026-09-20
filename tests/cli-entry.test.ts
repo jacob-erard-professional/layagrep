@@ -12,12 +12,12 @@ const version = (manifest as { version: string }).version;
 test('the executable entry point implements --help and --version', async () => {
   const help = await runCli(sourceEntry, ['--help']);
   assert.equal(help.code, EXIT_OK);
-  assert.match(help.stdout, /^usage: jevgrep --help \| --version/);
+  assert.match(help.stdout, /^usage: layagrep --help \| --version/);
   assert.equal(help.stderr, '');
 
   const versionResult = await runCli(sourceEntry, ['--version']);
   assert.equal(versionResult.code, EXIT_OK);
-  assert.equal(versionResult.stdout.trim(), `jevgrep ${version}`);
+  assert.equal(versionResult.stdout.trim(), `layagrep ${version}`);
   assert.equal(versionResult.stderr, '');
 });
 
@@ -31,9 +31,9 @@ test('the executable entry point runs a command and rejects a bad one', async ()
 
   // Without an override, the command layer attempts automatic discovery and explains that
   // this directory has not been initialized.
-  const missingConfig = await runCli(sourceEntry, ['search', '--query', 'authorization checks']);
+  const missingConfig = await runCli(sourceEntry, ['search', '--query', 'authorization checks'], tmpdir());
   assert.equal(missingConfig.code, EXIT_USAGE);
-  assert.match(missingConfig.stderr, /jevgrep init|project.*configured/i);
+  assert.match(missingConfig.stderr, /layagrep setup|runtime.*configured|source access refused/i);
 
   const unknown = await runCli(sourceEntry, ['frobnicate']);
   assert.equal(unknown.code, EXIT_USAGE);
@@ -47,19 +47,19 @@ test('the executable entry point runs a command and rejects a bad one', async ()
 test('a command documents itself through the executable', async () => {
   const help = await runCli(sourceEntry, ['doctor', '--help']);
   assert.equal(help.code, EXIT_OK);
-  assert.match(help.stdout, /^usage: jevgrep doctor \[--config <path>\]/);
-  assert.match(help.stdout, /never needs a credential/);
+  assert.match(help.stdout, /^usage: layagrep doctor \[--config <path>\]/);
+  assert.match(help.stdout, /runtime and cache operations stay inside/i);
   assert.equal(help.stderr, '');
 });
 
 test('the CLI reports the same version from an unrelated working directory', async () => {
   const result = await runCli(sourceEntry, ['--version'], tmpdir());
   assert.equal(result.code, EXIT_OK);
-  assert.equal(result.stdout.trim(), `jevgrep ${version}`);
+  assert.equal(result.stdout.trim(), `layagrep ${version}`);
 });
 
 test('running the entry point needs no provider key', async () => {
-  // runCli strips JEV/TYPESAFE/API_KEY/ACCESS_TOKEN variables from the environment, so this
+  // runCli strips LAYA/API_KEY/ACCESS_TOKEN variables from the environment, so this
   // run shows the local commands need no credential and the process stays honest about it.
   const result = await runCli(sourceEntry, ['doctor', '--config', 'missing-config.json']);
   assert.equal(result.code, EXIT_USAGE);

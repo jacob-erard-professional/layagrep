@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { parseCliArguments } from '../src/cli-args.ts';
 
 /**
- * JG-023 preparation (junior pilot): the argument surface of specification 4.5 and the
+ * LG-023 preparation (junior pilot): the argument surface of specification 4.5 and the
  * request limits of 4.1 and 7.3.
  *
  * Parsing is pure: it validates shapes, arities and documented limits, and it never touches
@@ -36,8 +36,13 @@ function expectError(argv: readonly string[]): string {
 }
 
 test('the documented command forms parse', () => {
-  const init = expectCommand(['init', '--root', 'C:/work/project', '--provider', 'typesafe']);
-  assert.deepEqual(init.command, { kind: 'init', root: 'C:/work/project', provider: 'typesafe', global: false });
+  const setup = expectCommand(['setup', '--root', 'C:/work/project', '--port', '8123']);
+  assert.deepEqual(setup.command, { kind: 'setup', root: 'C:/work/project', port: 8123 });
+  assert.deepEqual(expectCommand(['start']).command, { kind: 'start', json: false });
+  assert.deepEqual(expectCommand(['stop', '--root', '.']).command, { kind: 'stop', root: '.', json: false });
+  assert.deepEqual(expectCommand(['restart']).command, { kind: 'restart', json: false });
+  assert.deepEqual(expectCommand(['status', '--json']).command, { kind: 'status', json: true });
+  assert.deepEqual(expectCommand(['logs', '--lines', '50', '--follow']).command, { kind: 'logs', lines: 50, follow: true });
 
   const doctor = expectCommand(['doctor', '--config', 'C:/work/config.json']);
   assert.deepEqual(doctor.command, { kind: 'doctor', config: 'C:/work/config.json' });
@@ -71,12 +76,11 @@ test('the documented command forms parse', () => {
   assert.deepEqual(cache.command, { kind: 'cache-clear', config: 'config.json' });
 });
 
-test('init defaults to the current directory and TypeSafe provider selection remains interactive', () => {
-  const init = expectCommand(['init']);
-  assert.deepEqual(init.command, { kind: 'init', root: '.', global: false });
-  assert.deepEqual(expectCommand(['init', '--global']).command, { kind: 'init', root: '.', global: true });
-  assert.match(expectError(['init', '--global', '--root', '.']), /--root.*--global/);
-  assert.match(expectError(['init', '--provider', 'unknown']), /typesafe.*vercel/i);
+test('setup defaults to the current directory and validates its port', () => {
+  assert.deepEqual(expectCommand(['setup']).command, { kind: 'setup', root: '.', port: 8000 });
+  assert.match(expectError(['setup', '--port', '0']), /port/i);
+  assert.match(expectError(['setup', '--port', '65536']), /port/i);
+  assert.match(expectError(['logs', '--lines', '0']), /lines/i);
 });
 
 test('defaults follow the specification', () => {

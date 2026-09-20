@@ -12,7 +12,7 @@ import { countReferenceTokens } from '../src/response/token-counter.ts';
 import { createWorkspace } from './helpers/search-workspace.ts';
 
 /**
- * Inventory, exclusions and snapshots (JG-010 and JG-011).
+ * Inventory, exclusions and snapshots (LG-010 and LG-011).
  *
  * The inventory is a function of the working tree, never of the question, and every
  * exclusion has an explicit, countable reason. Snapshots preserve the original bytes
@@ -125,7 +125,7 @@ test('every valid UTF-8 language is searchable while only JS and TS use syntax c
   }
 });
 
-test('gitignore is hierarchical and .jevgrepignore can only narrow', () => {
+test('gitignore is hierarchical and .layagrepignore can only narrow', () => {
   const space = workspace({
     '.gitignore': 'ignored-by-git.ts\nnested/\n',
     'ignored-by-git.ts': 'export const hidden = 1;\n',
@@ -134,16 +134,16 @@ test('gitignore is hierarchical and .jevgrepignore can only narrow', () => {
     'src/local-only.ts': 'export const local = 1;\n',
     'src/keep.ts': 'export const keep = 1;\n',
     'src/narrowed.ts': 'export const narrowed = 1;\n',
-    '.jevgrepignore': 'src/narrowed.ts\n!ignored-by-git.ts\n',
+    '.layagrepignore': 'src/narrowed.ts\n!ignored-by-git.ts\n',
   });
   const inventory = inventoryOf(space);
   const paths = inventory.files.map((file) => file.relativePath);
-  assert.deepEqual(paths, ['.gitignore', '.jevgrepignore', 'src/.gitignore', 'src/keep.ts']);
+  assert.deepEqual(paths, ['.gitignore', '.layagrepignore', 'src/.gitignore', 'src/keep.ts']);
 
   const reasons = new Map(inventory.excluded.map((entry) => [entry.relativePath, entry.reason]));
-  assert.equal(reasons.get('ignored-by-git.ts'), 'gitignored', 'a .jevgrepignore negation cannot widen eligibility');
+  assert.equal(reasons.get('ignored-by-git.ts'), 'gitignored', 'a .layagrepignore negation cannot widen eligibility');
   assert.equal(reasons.get('src/local-only.ts'), 'gitignored');
-  assert.equal(reasons.get('src/narrowed.ts'), 'jevgrepignored');
+  assert.equal(reasons.get('src/narrowed.ts'), 'layagrepignored');
 });
 
 test('an explicitly requested file that a rule refuses stays refused', () => {

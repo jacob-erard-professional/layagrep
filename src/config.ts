@@ -1,18 +1,17 @@
 /**
- * Trusted configuration loading and the local `doctor` state (JG-007).
+ * Trusted configuration loading and the local `doctor` state (LG-007).
  *
- * The operator, not the searched repository, decides the authorized root, remote
- * disclosure, the provider destination and the resource ceilings (specification
- * section 5.1). This module therefore only ever reads the configuration file it was
- * explicitly given, refuses a file that lives inside the repository it authorizes,
- * and takes the provider secret from the environment instead of the file.
+ * Each installed repository owns its root, disclosure setting, loopback destination,
+ * and resource ceilings in `.layagrep/config.json`. Explicit external configurations
+ * remain useful to tests and integrations, while any configuration inside the source
+ * root is accepted only at that fixed runtime path. The endpoint schema permits only
+ * loopback HTTP, so repository-controlled settings cannot disclose source remotely.
  *
  * Nothing here contacts a provider: `doctor` must work offline, without a key.
  */
 import { createHash } from 'node:crypto';
 import { lstatSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import process from 'node:process';
 
 import {
@@ -51,7 +50,7 @@ export type LoadedConfiguration = {
   readonly repositoryRoot: string;
   /** Retained filesystem authorization; never reopen a replacement root by pathname. */
   readonly sourceRoot: AuthorizedRoot;
-  /** Per-user cache directory for this root and fingerprint; never inside the repository. */
+  /** Repository-local cache directory for this root and fingerprint. */
   readonly cacheDirectory: string;
   /** Stable identity of the authorization-relevant configuration, used for cache namespacing. */
   readonly fingerprint: string;
@@ -96,22 +95,6 @@ function futureDirectory(path: string): string {
   return join(AuthorizedRoot.open(existing).path, ...suffix);
 }
 
-/** Per-user base directory for local JevGrep data, outside every searched repository. */
-export function userDataDirectory(env: NodeJS.ProcessEnv = process.env): string {
-  const override = env['JEVGREP_CACHE_HOME'];
-  if (override !== undefined && override.length > 0 && isAbsolute(override)) {
-    return resolve(override);
-  }
-  if (process.platform === 'win32') {
-    const local = env['LOCALAPPDATA'];
-    return resolve(local !== undefined && local.length > 0
-      ? join(local, 'jevgrep')
-      : join(homedir(), 'AppData', 'Local', 'jevgrep'));
-  }
-  const xdg = env['XDG_CACHE_HOME'];
-  return resolve(xdg !== undefined && isAbsolute(xdg) ? join(xdg, 'jevgrep') : join(homedir(), '.cache', 'jevgrep'));
-}
-
 /**
  * Fingerprint of the settings that decide what may be prepared and where it is sent.
  * Selection threshold, response budget, deadline and scan caps are deliberately
@@ -122,7 +105,7 @@ export function configurationFingerprint(config: Configuration, repositoryRoot: 
   return sha256Hex(JSON.stringify([
     CONFIG_SCHEMA_VERSION,
     repositoryRoot,
-    config.provider.adapter ?? 'typesafe-direct',
+    config.provider.adapter ?? 'laya-local',
     config.provider.base_url.replace(/\/$/, ''),
     config.provider.model,
     config.source.respect_gitignore,
@@ -175,23 +158,19 @@ export function loadConfiguration(configPath: string, options: LoadOptions = {})
   let cacheDirectory: string;
   try {
     sourceRoot = AuthorizedRoot.open(config.repository_root);
-    cacheDirectory = futureDirectory(join(userDataDirectory(options.env ?? process.env), 'scores',
+    cacheDirectory = futureDirectory(join(sourceRoot.path, '.layagrep', 'cache', 'scores',
       configurationFingerprint(config, sourceRoot.path)));
   } catch {
     throw new ConfigurationError('INVALID_CONFIG', 'repository_root or cache ancestors failed filesystem authorization');
   }
   const repositoryRoot = sourceRoot.path;
-  if (isInsideDirectory(realConfigPath, repositoryRoot)) {
+  const localConfigPath = join(repositoryRoot, '.layagrep', 'config.json');
+  if (isInsideDirectory(realConfigPath, repositoryRoot) && realConfigPath !== localConfigPath) {
     throw new ConfigurationError('INVALID_CONFIG',
-      'the trusted configuration must live outside the repository it authorizes; a repository-local file cannot grant authorization');
+      `repository-local configuration is only accepted at ${localConfigPath}`);
   }
 
   const fingerprint = configurationFingerprint(config, repositoryRoot);
-  if (isInsideDirectory(cacheDirectory, repositoryRoot)) {
-    throw new ConfigurationError('INVALID_CONFIG',
-      `the cache directory ${cacheDirectory} would sit inside the authorized repository; set JEVGREP_CACHE_HOME elsewhere`);
-  }
-
   return { configPath: realConfigPath, config, repositoryRoot, sourceRoot, cacheDirectory, fingerprint };
 }
 
@@ -206,6 +185,7 @@ export function resolveCredential(loaded: LoadedConfiguration, env: NodeJS.Proce
     throw new ConfigurationError('REMOTE_DISABLED',
       `remote evaluation is disabled in ${loaded.configPath}; set "remote_evaluation_enabled": true to send eligible excerpts to ${loaded.config.provider.base_url}`);
   }
+  if (loaded.config.provider.adapter === 'laya-local') return '';
   const name = loaded.config.provider.api_key_env;
   const secret = env[name];
   if (secret === undefined || secret.trim().length === 0) {
@@ -224,7 +204,7 @@ export type DoctorReport = {
   readonly repository_root_readable: boolean;
   readonly remote_evaluation_enabled: boolean;
   readonly provider: {
-    readonly adapter: 'typesafe-direct' | 'vercel-ai-gateway' | 'openrouter';
+    readonly adapter: 'laya-local';
     readonly base_url: string; readonly model: string;
     readonly api_key_env: string; readonly credential: CredentialState;
   };
@@ -266,10 +246,8 @@ export function doctorReport(
   counterId = REFERENCE_COUNTER_ID,
 ): DoctorReport {
   const { config } = loaded;
-  const secret = env[config.provider.api_key_env];
-  const hasSecret = secret !== undefined && secret.trim().length > 0;
-  const credential: CredentialState = !config.remote_evaluation_enabled
-    ? 'not_required' : hasSecret ? 'present' : 'missing';
+  void env;
+  const credential: CredentialState = 'not_required';
 
   const enabled: Partial<Record<ScanCap, number>> = {};
   const disabled: ScanCap[] = [];
@@ -285,8 +263,6 @@ export function doctorReport(
   const problems: string[] = [];
   if (!config.remote_evaluation_enabled) {
     problems.push('remote evaluation is disabled: doctor and inspect work, search cannot dispatch a provider request');
-  } else if (!hasSecret) {
-    problems.push(`the credential environment variable ${config.provider.api_key_env} is empty or unset`);
   }
   let rootReadable = true;
   try {
@@ -306,7 +282,7 @@ export function doctorReport(
     repository_root_readable: rootReadable,
     remote_evaluation_enabled: config.remote_evaluation_enabled,
     provider: {
-      adapter: config.provider.adapter ?? 'typesafe-direct',
+      adapter: config.provider.adapter ?? 'laya-local',
       base_url: config.provider.base_url, model: config.provider.model,
       api_key_env: config.provider.api_key_env, credential,
     },
@@ -322,8 +298,8 @@ export function doctorReport(
     cache: {
       enabled: config.cache.enabled, directory: loaded.cacheDirectory,
       ttl_seconds: config.cache.ttl_seconds, max_bytes: config.cache.max_bytes,
-      policy: scoreCachePolicy(config.provider.adapter ?? 'typesafe-direct', config.provider.model, config.cache).mode,
-      effective_ttl_seconds: scoreCachePolicy(config.provider.adapter ?? 'typesafe-direct', config.provider.model, config.cache).ttlSeconds,
+      policy: scoreCachePolicy(config.provider.adapter ?? 'laya-local', config.provider.model, config.cache).mode,
+      effective_ttl_seconds: scoreCachePolicy(config.provider.adapter ?? 'laya-local', config.provider.model, config.cache).ttlSeconds,
       present: directoryExists(loaded.cacheDirectory),
     },
     problems,
@@ -344,7 +320,7 @@ export function renderDoctorReport(report: DoctorReport): string[] {
     `repository root    ${report.repository_root}${report.repository_root_readable ? '' : ' (unreadable)'}`,
     `remote evaluation  ${remote}`,
     `provider           ${report.provider.adapter} ${report.provider.base_url} model=${report.provider.model}`,
-    `credential         ${report.provider.api_key_env} (${report.provider.credential}; value never printed)`,
+    `credential         not required (${report.provider.credential})`,
     `pricing record     ${pricing}`,
     `response budget    default ${String(report.search.default_response_tokens)}, maximum ${String(report.search.max_response_tokens)} tokens, counter ${report.response_counter}`,
     `search limits      deadline ${String(report.search.deadline_ms)} ms, concurrency ${String(report.search.concurrency)}, threshold ${String(report.search.threshold)}, require_fit ${String(report.search.require_fit)}`,

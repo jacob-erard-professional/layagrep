@@ -1,5 +1,5 @@
 /**
- * Ranking, merging and budgeted selection (JG-019).
+ * Ranking, merging and budgeted selection (LG-019).
  *
  * The baseline of specification section 8.1: keep valid scores at or above the
  * threshold, rank them, collapse exact duplicates, merge overlapping or adjacent
@@ -13,7 +13,7 @@
  *
  * This module never reads the filesystem and never re-renders source: it asks the
  * snapshot it was given for an exact slice of the union it wants to build. The final
- * serialized-budget guarantee belongs to JG-020, which may still remove ranges.
+ * serialized-budget guarantee belongs to LG-020, which may still remove ranges.
  */
 import type { PreparedFragment } from '../source/chunker.ts';
 
@@ -42,7 +42,7 @@ export type SelectionOptions = {
   readonly measure: (range: SelectedRange) => number;
   /** Exact slice of a file's line range; null when the file is no longer available. */
   readonly sliceLines: (path: string, startLine: number, endLine: number) => string | null;
-  /** Files proven stale by JG-021; they are never selected again in this search. */
+  /** Files proven stale by LG-021; they are never selected again in this search. */
   readonly unavailablePaths?: ReadonlySet<string>;
 };
 

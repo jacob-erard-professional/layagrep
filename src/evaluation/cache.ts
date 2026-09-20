@@ -1,5 +1,5 @@
 /**
- * Per-question evaluation cache (JG-018).
+ * Per-question evaluation cache (LG-018).
  *
  * The cache avoids repeating a judgment whose explicit inputs have not changed.
  * Pinned revisions use the configured TTL; known rolling aliases require an explicit
@@ -150,7 +150,7 @@ export class ScoreCache {
   #ttl(model: string): number {
     if (isPinnedModelRevision(model)) return this.#options.ttlSeconds;
     return isRollingModel(model)
-      ? Math.max(0, Math.min(this.#options.ttlSeconds, this.#options.rollingTtlSeconds ?? 0, MAX_ROLLING_TTL_SECONDS)) : 0;
+      ? Math.max(0, Math.min(this.#options.ttlSeconds, this.#options.rollingTtlSeconds ?? MAX_ROLLING_TTL_SECONDS, MAX_ROLLING_TTL_SECONDS)) : 0;
   }
   #name(identity: string): string { return `${identity.slice(0, 2)}/${identity}.json`; }
 

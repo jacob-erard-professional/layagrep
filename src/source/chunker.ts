@@ -1,7 +1,7 @@
 /**
- * Syntax-aware fragment preparation for JavaScript and TypeScript (JG-015).
+ * Syntax-aware fragment preparation for JavaScript and TypeScript (LG-015).
  *
- * The line-window chunker (JG-012, `line-windows.ts`) stays the reference and the
+ * The line-window chunker (LG-012, `line-windows.ts`) stays the reference and the
  * fallback; this module only improves *where* JS/TS fragments begin and end. It
  * produces the same fragment shape, so nothing downstream has to know which chunker
  * ran. A file this module cannot parse falls back to line windows with an
@@ -24,13 +24,13 @@ import type { SourceSnapshot } from './snapshot.ts';
 export { DEFAULT_WINDOW_LIMITS, LINE_WINDOW_CHUNKER_VERSION };
 export type { WindowLimits };
 
-/** Bumped when syntax boundaries change; part of evaluation identity (JG-018). */
-export const SYNTAX_CHUNKER_VERSION = 'jevgrep-typescript-6.0.2-2';
+/** Bumped when syntax boundaries change; part of evaluation identity (LG-018). */
+export const SYNTAX_CHUNKER_VERSION = 'layagrep-typescript-6.0.2-2';
 
 /**
  * A prepared fragment from either chunker.
  *
- * `classification` widens JG-012's literal so a structural range can say so; `label`
+ * `classification` widens LG-012's literal so a structural range can say so; `label`
  * is an optional structural hint (`function:handle`) used as request metadata and in
  * local diagnostics, never as returned evidence.
  */
@@ -100,10 +100,10 @@ function isBlankRange(snapshot: SourceSnapshot, startLine: number, endLine: numb
 /**
  * Split one range into windows under the active limits.
  *
- * JG-012 owns whole-file windowing; this range-level variant exists because an
+ * LG-012 owns whole-file windowing; this range-level variant exists because an
  * oversized declaration must be split *inside* its own line range while keeping the
  * file's real line numbers and byte offsets. Limits and overlap semantics are the
- * ones JG-012 defines.
+ * ones LG-012 defines.
  */
 function windowsOfRange(
   snapshot: SourceSnapshot,
@@ -224,7 +224,7 @@ function packUnits(
   return fragments;
 }
 
-/** Whole-file line windows, produced by the JG-012 chunker and relabelled for this shape. */
+/** Whole-file line windows, produced by the LG-012 chunker and relabelled for this shape. */
 function fallbackWindows(snapshot: SourceSnapshot, limits: WindowLimits): ChunkResult {
   const result = lineWindows(
     { path: snapshot.relativePath, text: snapshot.text, sha256: snapshot.sha256 },
@@ -239,8 +239,8 @@ function fallbackWindows(snapshot: SourceSnapshot, limits: WindowLimits): ChunkR
 /**
  * Prepare every fragment of one snapshot.
  *
- * Non-JS/TS text uses JG-012 directly. JS/TS text is parsed for statement
- * boundaries; if the parser refuses the file, the same JG-012 windows are returned
+ * Non-JS/TS text uses LG-012 directly. JS/TS text is parsed for statement
+ * boundaries; if the parser refuses the file, the same LG-012 windows are returned
  * with `fallback: 'parse_failure'` so the caller can report it.
  */
 export function chunkSnapshot(

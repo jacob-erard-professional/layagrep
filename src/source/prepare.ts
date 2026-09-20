@@ -1,5 +1,5 @@
 /**
- * Preparation: from an inventory to snapshots and fragments (JG-010, JG-011, JG-012, JG-015).
+ * Preparation: from an inventory to snapshots and fragments (LG-010, LG-011, LG-012, LG-015).
  *
  * This is the first stage allowed to read bytes, so it is also the stage that applies
  * the content-based exclusions of specification section 5.2: invalid encodings,

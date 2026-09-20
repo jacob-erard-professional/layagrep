@@ -11,7 +11,7 @@ import {
   invalidDiagnostics, invalidError, RESULT_FIXTURES, resultFixture, validDiagnostics, validError,
 } from '../fixtures/contracts.ts';
 
-// Deliberately synthetic: this is not the production reference tokenizer (JG-006).
+// Deliberately synthetic: this is not the production reference tokenizer (LG-006).
 const counter: ResponseTokenCounter = { id: 'fixture-byte-counter@1', count: (text) => Buffer.byteLength(text) };
 
 test('compact error examples are strict, versioned and use fixed recovery guidance', () => {

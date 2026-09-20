@@ -1,5 +1,5 @@
 /**
- * Pinned local response tokenizer (JG-006, specification 8.2).
+ * Pinned local response tokenizer (LG-006, specification 8.2).
  * The complete serialized payload is measured; this is not provider/Codex billing.
  * Vocabulary data is bundled in the installed package and never fetched at runtime.
  */

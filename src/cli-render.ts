@@ -1,5 +1,5 @@
 /**
- * Human-readable CLI rendering (JG-023, specification 2.2, 4.2 and 4.5).
+ * Human-readable CLI rendering (LG-023, specification 2.2, 4.2 and 4.5).
  *
  * Two rules shape this module:
  *
@@ -65,7 +65,7 @@ function coverageLine(result: SearchResult): string {
 }
 
 function failureLines(failure: FailureView): string[] {
-  const lines = [`jevgrep: ${failure.status}`];
+  const lines = [`layagrep: ${failure.status}`];
   lines.push(`error: ${failure.error?.code ?? 'UNKNOWN'}`);
   if (typeof failure.error?.message === 'string' && failure.error.message.length > 0) {
     lines.push(`detail: ${failure.error.message}`);
@@ -98,7 +98,7 @@ export function renderHumanOutcome(
   if (result === undefined) {
     lines.push(...failureLines(outcome as FailureView));
   } else {
-    lines.push(`jevgrep: ${result.status}`);
+    lines.push(`layagrep: ${result.status}`);
     lines.push(coverageLine(result));
     const reasons = result.report.stop_reasons.slice(0, MAX_STOP_REASONS);
     if (reasons.length > 0) {

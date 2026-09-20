@@ -1,5 +1,5 @@
 /**
- * Post-build smoke check for the packaged CLI (JG-001).
+ * Post-build smoke check for the packaged CLI (LG-001).
  *
  * It runs the emitted dist/cli.js exactly as an installed user would and checks the
  * documented exit codes, so `npm run verify` fails if the package stops being
@@ -45,10 +45,10 @@ if (!existsSync(entry)) {
   record('dist/cli.js keeps its shebang', emitted.startsWith('#!/usr/bin/env node'), emitted.slice(0, 40));
 
   const help = run(['--help']);
-  record('--help exits 0 with usage on stdout', help.code === 0 && help.stdout.startsWith('usage: jevgrep'), `code=${String(help.code)}`);
+  record('--help exits 0 with usage on stdout', help.code === 0 && help.stdout.startsWith('usage: layagrep'), `code=${String(help.code)}`);
 
   const version = run(['--version']);
-  record('--version exits 0 with one version line', version.code === 0 && /^jevgrep \d+\.\d+\.\d+\n$/.test(version.stdout), `code=${String(version.code)} out=${version.stdout.trim()}`);
+  record('--version exits 0 with one version line', version.code === 0 && /^layagrep \d+\.\d+\.\d+\n$/.test(version.stdout), `code=${String(version.code)} out=${version.stdout.trim()}`);
 
   const fromElsewhere = run(['--version'], tmpdir());
   record('--version works outside the repository', fromElsewhere.code === 0 && fromElsewhere.stdout === version.stdout, `code=${String(fromElsewhere.code)}`);

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "authorization-scope-cases",
-  "reference": "docs/issues.md#jg-008, specification 4.1 and 5.1, requirements R1 and R11",
+  "reference": "docs/issues.md#lg-008, specification 4.1 and 5.1, requirements R1 and R11",
   "reasons": [
     "outside_root",
     "traversal",
@@ -172,7 +172,7 @@
       "expect": "reject",
       "target": "//server/share/file.ts",
       "reason": "unc_path",
-      "note": "JG-008: leading double slashes are refused on every host; this is not a repository-relative path."
+      "note": "LG-008: leading double slashes are refused on every host; this is not a repository-relative path."
     },
     {
       "id": "device-namespace-windows",
@@ -218,7 +218,7 @@
       "expect": "reject",
       "target": "src/app.ts:secret",
       "reason": "alternate_data_stream",
-      "note": "JG-008: colons are refused on every host to keep one portable scope policy."
+      "note": "LG-008: colons are refused on every host to keep one portable scope policy."
     },
     {
       "id": "nul-byte",
@@ -284,7 +284,7 @@
       "form": "scope",
       "expect": "accept",
       "target": "src\\app.ts",
-      "note": "JG-008: backslashes are normalized to slashes; they do not name literal backslash characters on POSIX."
+      "note": "LG-008: backslashes are normalized to slashes; they do not name literal backslash characters on POSIX."
     },
     {
       "id": "overlap-directory-and-file",

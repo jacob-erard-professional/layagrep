@@ -6,7 +6,7 @@ import { after, test } from 'node:test';
 import { repoRoot } from './helpers/cli-runner.ts';
 
 /**
- * Fixture lot prepared for JG-008 (path confinement, specification 4.1 and 5.1), which S
+ * Fixture lot prepared for LG-008 (path confinement, specification 4.1 and 5.1), which S
  * pilots and M reviews. The junior contribution is the case table plus this check: the table
  * must be complete, machine-checkable and materialisable before S writes the access control
  * against it.
@@ -57,7 +57,7 @@ after(() => {
 
 /** Materialise the declared layout so every case points at a real path. */
 function materialise(): string {
-  const root = mkdtempSync(join(tmpdir(), 'jevgrep-authorization-'));
+  const root = mkdtempSync(join(tmpdir(), 'layagrep-authorization-'));
   temporaryRoots.push(root);
   for (const directory of table.layout.directories) {
     mkdirSync(join(root, directory), { recursive: true });
@@ -92,7 +92,7 @@ function inside(path: string, container: string): boolean {
 test('the case table is well formed', () => {
   assert.equal(table.schema_version, 1);
   assert.equal(table.kind, 'authorization-scope-cases');
-  assert.match(table.reference, /jg-008/i);
+  assert.match(table.reference, /lg-008/i);
   assert.ok(table.reasons.length >= 4, 'the documented rejection reasons must be listed');
   assert.ok(table.cases.length >= 20, `expected a broad table, found ${String(table.cases.length)} cases`);
 
@@ -146,9 +146,9 @@ test('each non-link layout case lies inside or outside the authorized root as de
 });
 
 test('a sibling directory with a shared prefix defeats a naive string check', () => {
-  // Acceptance criterion 1 of JG-008: a prefix comparison accepts this path, so the case
+  // Acceptance criterion 1 of LG-008: a prefix comparison accepts this path, so the case
   // forces canonical containment instead of string matching.
-  const root = resolve('/tmp/jevgrep-authorization-probe', 'authorized');
+  const root = resolve('/tmp/layagrep-authorization-probe', 'authorized');
   const sibling = resolve(root, '..', 'authorized-other', 'src', 'app.ts');
   assert.equal(sibling.startsWith(root), true, 'the naive check wrongly accepts it');
   assert.equal(inside(sibling, root), false, 'containment must reject it');

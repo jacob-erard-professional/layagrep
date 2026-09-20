@@ -1,6 +1,6 @@
 /**
- * Subprocess launcher for the MCP server tests (JG-024, and the interoperability
- * probe of JG-006).
+ * Subprocess launcher for the MCP server tests (LG-024, and the interoperability
+ * probe of LG-006).
  *
  * It starts the real server over real stdio with a scripted provider, so the tests
  * observe process behaviour — stdout purity, cancellation, stdin EOF — without a
@@ -12,11 +12,11 @@ import process from 'node:process';
 
 import { loadConfiguration } from '../../src/config.ts';
 import { createSearchEngine } from '../../src/engine.ts';
-import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../../src/evaluation/jev.ts';
+import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../../src/evaluation/laya.ts';
 import { runMcpServer } from '../../src/mcp.ts';
 
 class DeterministicProvider implements ProviderClient {
-  readonly model = 'jev-1.13.0';
+  readonly model = 'convaiinnovations/laya';
 
   evaluateBatch(batch: EvaluationBatch): Promise<BatchEvaluation> {
     const scores = new Map<string, number>();

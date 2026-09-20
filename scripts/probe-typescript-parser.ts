@@ -1,5 +1,5 @@
 /**
- * Reproducible probe of the pinned TypeScript package's syntax APIs (JG-015).
+ * Reproducible probe of the pinned TypeScript package's syntax APIs (LG-015).
  *
  * Compare the build compiler and the separately pinned runtime syntax parser.
  * The probe asks the installed packages which parse entry points exist and whether

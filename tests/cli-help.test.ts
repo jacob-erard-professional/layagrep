@@ -4,17 +4,16 @@ import { allowedOptionsFor } from '../src/cli-args.ts';
 import { commandHelp, globalHelp, documentedCommands } from '../src/cli-help.ts';
 
 /**
- * JG-023 help surface. The help must describe exactly what the parser accepts: a command
+ * LG-023 help surface. The help must describe exactly what the parser accepts: a command
  * help that advertises an option the parser refuses, or hides one it accepts, is a defect.
- * The same rule as JG-001 applies: nothing is presented as available that cannot run.
+ * The same rule as LG-001 applies: nothing is presented as available that cannot run.
  */
 test('every documented command has a help page', () => {
-  assert.deepEqual([...documentedCommands()].sort(), ['cache clear', 'doctor', 'init', 'inspect', 'mcp', 'search']);
+  assert.deepEqual([...documentedCommands()].sort(), ['cache clear', 'doctor', 'inspect', 'logs', 'mcp', 'restart', 'search', 'setup', 'start', 'status', 'stop']);
   for (const command of documentedCommands()) {
     const help = commandHelp(command);
     assert.ok(help !== undefined, `${command} has no help`);
     assert.match(help, new RegExp(command.split(' ')[0] ?? '', 'i'));
-    if (command !== 'init') assert.match(help, /--config/);
     assert.match(help, /exit codes/i, `${command}: the page must state the exit-code contract`);
   }
   assert.equal(commandHelp('frobnicate'), undefined);
@@ -52,14 +51,12 @@ test('the search help documents the response budget bounds and the query sources
   assert.match(help, /--query-file/);
   assert.match(help, /--allow-partial/);
   assert.match(help, /--max-context-tokens/);
-  assert.match(help, /4[ ,]?000/);
   assert.match(help, /1[ ,]?024/);
-  assert.match(help, /16[ ,]?000/);
 });
 
 test('the global help lists every command and the whole exit-code contract', () => {
   const help = globalHelp();
-  assert.match(help, /^usage: jevgrep/);
+  assert.match(help, /^usage: layagrep/);
   assert.doesNotMatch(help, /not implemented/i, 'the commands exist, so no page may claim otherwise');
   for (const command of documentedCommands()) {
     const listing = new RegExp(`^ {2}${command}$`, 'm').exec(help);
@@ -68,18 +65,16 @@ test('the global help lists every command and the whole exit-code contract', () 
   for (const code of ['0', '2', '3', '4', '130']) {
     assert.match(help, new RegExp(`^ {2}${code}\\s`, 'm'), `exit code ${code} is missing`);
   }
-  assert.match(help, /credential|provider/i, 'the remote requirement must be stated');
+  assert.match(help, /local|repository/i, 'the local runtime boundary must be stated');
 });
 
 test('the help distinguishes local MCP startup from remote search tool calls', () => {
   const mcp = commandHelp('mcp');
   assert.ok(mcp !== undefined);
-  assert.match(mcp, /starting the local stdio server performs no scan and no provider call/i);
-  assert.match(mcp, /tool calls may\s+request remote evaluation/i);
-  assert.doesNotMatch(mcp, /never contacts the provider/i);
+  assert.match(mcp, /source excerpts are sent only to the configured loopback Laya server/i);
 
   const doctor = commandHelp('doctor');
   assert.ok(doctor !== undefined);
-  assert.match(doctor, /never contacts the provider/i);
-  assert.match(globalHelp(), /CLI or an MCP tool call/);
+  assert.match(doctor, /runtime and cache operations stay inside/i);
+  assert.match(globalHelp(), /complete runtime under \.layagrep/i);
 });

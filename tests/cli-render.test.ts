@@ -5,7 +5,7 @@ import { referenceCounter } from '../src/response/token-counter.ts';
 import { resultFixture } from './fixtures/contracts.ts';
 
 /**
- * JG-023 human renderer (specification 2.2, 4.2 and 4.5).
+ * LG-023 human renderer (specification 2.2, 4.2 and 4.5).
  *
  * Rules under test:
  * - excerpts are the original source slices, never edited, summarized or re-indented;
@@ -18,7 +18,7 @@ test('a complete result renders a header, the excerpt and its own size', () => {
   const outcome = resultFixture('complete');
   const rendered = renderHumanOutcome(outcome, referenceCounter);
 
-  assert.match(rendered.text, /^jevgrep: complete/);
+  assert.match(rendered.text, /^layagrep: complete/);
   assert.match(rendered.text, /1 excerpt/);
   assert.match(rendered.text, /src\/cache\.ts:2-2/);
   // The original slice appears verbatim, CRLF included: the renderer adds no indentation.
@@ -33,7 +33,7 @@ test('a partial result names the stop reason and never claims absence', () => {
   const outcome = resultFixture('partial');
   const rendered = renderHumanOutcome(outcome, referenceCounter);
 
-  assert.match(rendered.text, /^jevgrep: partial/);
+  assert.match(rendered.text, /^layagrep: partial/);
   assert.match(rendered.text, /PROVIDER_UNAVAILABLE/);
   assert.match(rendered.text, /coverage/i);
   assert.doesNotMatch(rendered.text, /no result|nothing found|absent/i);
@@ -43,7 +43,7 @@ test('a rejected request explains the refusal and offers no excerpt', () => {
   const outcome = resultFixture('rejected');
   const rendered = renderHumanOutcome(outcome, referenceCounter);
 
-  assert.match(rendered.text, /^jevgrep: rejected/);
+  assert.match(rendered.text, /^layagrep: rejected/);
   assert.equal(rendered.excerptCount, 0);
   assert.doesNotMatch(rendered.text, /^ {2}/m, 'a refusal carries no source block');
 });
@@ -52,7 +52,7 @@ test('a failed search reports the error code without inventing evidence', () => 
   const outcome = resultFixture('error');
   const rendered = renderHumanOutcome(outcome, referenceCounter);
 
-  assert.match(rendered.text, /^jevgrep: error/);
+  assert.match(rendered.text, /^layagrep: error/);
   assert.equal(rendered.excerptCount, 0);
   assert.ok(rendered.text.length > 0);
 });

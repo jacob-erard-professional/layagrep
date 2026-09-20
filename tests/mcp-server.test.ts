@@ -7,7 +7,7 @@ import { after, test } from 'node:test';
 import { createSearchEngine } from '../src/engine.ts';
 import type { SearchOutcome } from '../src/contracts.ts';
 import { searchOutcomeSchema } from '../src/contracts.ts';
-import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/jev.ts';
+import type { BatchEvaluation, EvaluationBatch, ProviderClient } from '../src/evaluation/laya.ts';
 import { MCP_PROTOCOL_VERSION, TOOL_NAME, runMcpServer } from '../src/mcp.ts';
 import type { Clock } from '../src/lifecycle.ts';
 import { ManualClock } from '../src/testing/manual-clock.ts';
@@ -15,7 +15,7 @@ import { offlineEnv } from './helpers/cli-runner.ts';
 import { createWorkspace, withRemoteEnabled } from './helpers/search-workspace.ts';
 
 /**
- * The stdio MCP adapter (JG-024) and the interoperability checks of JG-006.
+ * The stdio MCP adapter (LG-024) and the interoperability checks of LG-006.
  *
  * The adapter must add nothing to the engine and hide nothing from it: one tool, one
  * validated JSON payload per call, `isError` following the outcome status, stdout
@@ -42,7 +42,7 @@ after(() => {
 });
 
 class DeterministicProvider implements ProviderClient {
-  readonly model = 'jev-1.13.0';
+  readonly model = 'convaiinnovations/laya';
   calls = 0;
 
   evaluateBatch(batch: EvaluationBatch): Promise<BatchEvaluation> {
@@ -73,7 +73,8 @@ function session(provider: ProviderClient = new DeterministicProvider(), clock?:
   const output = new PassThrough();
   const errorOutput = new PassThrough();
   const engine = createSearchEngine({
-    configuration: space.loaded, provider, env: space.env,
+    configuration: { ...space.loaded, config: { ...space.loaded.config,
+      search: { ...space.loaded.config.search, concurrency: 1 } } }, provider, env: space.env,
     ...(clock === undefined ? {} : { clock }),
   });
   const finished = runMcpServer({ engine, input, output, errorOutput, serverVersion: '0.0.0-test' });
@@ -123,7 +124,7 @@ test('the server starts offline, answers initialize and lists exactly one tool',
   assert.ok(initialize !== undefined);
   const initializeResult = initialize['result'] as { protocolVersion: string; serverInfo: { name: string } };
   assert.equal(initializeResult.protocolVersion, MCP_PROTOCOL_VERSION);
-  assert.equal(initializeResult.serverInfo.name, 'jevgrep');
+  assert.equal(initializeResult.serverInfo.name, 'layagrep');
 
   const list = messages.find((message) => message['id'] === 2);
   assert.ok(list !== undefined);
@@ -214,7 +215,7 @@ test('one call waits, the third is BUSY, and a queued cancellation frees its slo
   let release: () => void = () => {};
   const blocked = new Promise<void>((resolve) => { release = resolve; });
   const provider: ProviderClient = {
-    model: 'jev-1.13.0',
+    model: 'convaiinnovations/laya',
     async evaluateBatch(batch) {
       calls += 1;
       await blocked;
@@ -243,7 +244,7 @@ test('one call waits, the third is BUSY, and a queued cancellation frees its slo
     release();
   }
   const messages = await active.responses();
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
   assert.ok(!messages.some((message) => message['id'] === '1'));
   assert.ok(messages.some((message) => message['id'] === 1));
   assert.ok(messages.some((message) => message['id'] === 4));
@@ -258,13 +259,13 @@ test('a cancelled call never produces a later result', async () => {
     release = resolve;
   });
   const provider: ProviderClient = {
-    model: 'jev-1.13.0',
+    model: 'convaiinnovations/laya',
     async evaluateBatch(batch: EvaluationBatch): Promise<BatchEvaluation> {
       await blocked;
       const scores = new Map(batch.items.map((item) => [item.id, 0.9] as const));
       return {
         scores, invalid: [], usage: { inputTokens: 10, outputTokens: 0 },
-        requestedModel: 'jev-1.13.0', returnedModel: 'jev-1.13.0', transmittedBytes: 10, requestId: null,
+        requestedModel: 'convaiinnovations/laya', returnedModel: 'convaiinnovations/laya', transmittedBytes: 10, requestId: null,
       };
     },
   };
@@ -289,7 +290,7 @@ test('time spent in the queue consumes the search deadline before any provider d
   const blocked = new Promise<void>((resolve) => { release = resolve; });
   let calls = 0;
   const provider: ProviderClient = {
-    model: 'jev-1.13.0',
+    model: 'convaiinnovations/laya',
     async evaluateBatch(batch) {
       calls += 1;
       await blocked;
@@ -326,7 +327,7 @@ test('the subprocess keeps stdout clean and stops when stdin closes', async () =
   const space = workspace();
   const launcher = fileURLToPath(new URL('./helpers/mcp-subprocess.ts', import.meta.url));
   const child = spawn(process.execPath, [launcher, space.configPath], {
-    env: { ...offlineEnv(), JEVGREP_CACHE_HOME: space.env['JEVGREP_CACHE_HOME'] ?? '' },
+    env: { ...offlineEnv(), LAYAGREP_CACHE_HOME: space.env['LAYAGREP_CACHE_HOME'] ?? '' },
     stdio: ['pipe', 'pipe', 'pipe'],
     windowsHide: true,
   });

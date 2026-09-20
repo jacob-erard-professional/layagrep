@@ -9,7 +9,7 @@ import { createSnapshot } from '../src/source/snapshot.ts';
 import type { SourceSnapshot } from '../src/source/snapshot.ts';
 
 /**
- * JS/TS syntax chunking with the line-window fallback (JG-015, specification 5.4).
+ * JS/TS syntax chunking with the line-window fallback (LG-015, specification 5.4).
  *
  * The acceptance criteria drive these tests: the eight JS/TS extensions are covered,
  * top-level registrations stay searchable, every non-blank line of a prepared file
@@ -201,7 +201,7 @@ test('a line no legal fragment can hold is reported, never truncated', () => {
   assert.equal(result.line, 1);
 });
 
-test('non-JS text uses bounded line windows through the JG-012 chunker', () => {
+test('non-JS text uses bounded line windows through the LG-012 chunker', () => {
   const markdown = Array.from({ length: 200 }, (_, index) => `line ${String(index)} of the runbook`).join('\n');
   const snapshot = snapshotOf('docs/runbook.md', `${markdown}\n`);
   const result = chunkSnapshot(snapshot);

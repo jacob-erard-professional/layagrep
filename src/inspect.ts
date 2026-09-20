@@ -1,5 +1,5 @@
 /**
- * Local scope inspection (JG-023 `inspect`, specification section 2.1).
+ * Local scope inspection (LG-023 `inspect`, specification section 2.1).
  *
  * `inspect` answers the operator's question before any disclosure: what would this
  * scope send, how much of it is there, and what was excluded and why. It reads the
@@ -13,7 +13,7 @@
 import { exclusionCounts, prepareScope } from './source/prepare.ts';
 import type { LoadedConfiguration } from './config.ts';
 import { buildBatches } from './engine.ts';
-import type { EvaluationBatch } from './evaluation/jev.ts';
+import type { EvaluationBatch } from './evaluation/laya.ts';
 import { batchLimits } from './evaluation/policy.ts';
 import { configuredAdapter, serializeConfiguredBatch } from './evaluation/provider.ts';
 import { countReferenceTokens } from './response/token-counter.ts';
@@ -122,12 +122,7 @@ export function inspectScope(configuration: LoadedConfiguration, options: Inspec
   }
   notes.push('token and cost figures are local estimates under the pinned reference counter, not provider billing');
   notes.push(`batch target: ${String(limits.totalTokens * limits.headroomRatio)} reference tokens, at most ${String(limits.maxItems)} questions and ${String(limits.maxRequestBytes)} wire bytes`);
-  if (adapter === 'openrouter') {
-    notes.push('OpenRouter advertises a 32k context; its use as an aggregate batch ceiling is a conservative local policy');
-  }
-  if (adapter === 'vercel-ai-gateway') {
-    notes.push('Gateway advertises a 32k context; its use as an aggregate batch ceiling is a conservative local policy');
-  }
+  notes.push('Laya evaluates one fragment per request because the English checkpoint has a small state budget');
 
   return {
     repository_root: configuration.repositoryRoot,

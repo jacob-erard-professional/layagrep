@@ -76,9 +76,9 @@ function abortIfNeeded(signal: AbortSignal | undefined): void {
 }
 
 /**
- * Offline, script-driven provider seam for JG-003.
+ * Offline, script-driven provider seam for LG-003.
  *
- * It deliberately accepts and returns unvalidated payloads. JG-002 owns public
+ * It deliberately accepts and returns unvalidated payloads. LG-002 owns public
  * schemas; consumers can use this fake to exercise malformed and missing answers
  * without the fake silently normalizing them.
  */

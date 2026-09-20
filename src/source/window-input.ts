@@ -1,5 +1,5 @@
 /**
- * Adapter between a prepared source snapshot (JG-011) and the window chunker (JG-012).
+ * Adapter between a prepared source snapshot (LG-011) and the window chunker (LG-012).
  *
  * The chunker takes a narrow structural view - a relative path, the decoded text and the
  * file hash - instead of the snapshot class, so the two modules stay replaceable and can be
