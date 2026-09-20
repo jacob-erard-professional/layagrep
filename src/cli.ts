@@ -130,7 +130,9 @@ export function isMainModule(moduleUrl: string = import.meta.url): boolean {
 /** Help topic named by argv: the documented command, with `cache clear` as one topic. */
 function helpTopic(argv: readonly string[]): string {
   const first = argv[0] ?? '';
-  return first === 'cache' ? 'cache clear' : first;
+  if (first === 'cache') return 'cache clear';
+  if (first === 'harness') return `harness ${argv[1] ?? ''} ${argv[2] ?? ''}`.trim();
+  return first;
 }
 
 /** A short, upper-case error code is safe to show; a message or a path is not. */

@@ -30,6 +30,19 @@ layagrep restart
 layagrep stop
 ```
 
+Install the native Pi CLI tool for this repository:
+
+```bash
+layagrep harness install pi
+layagrep harness status pi
+```
+
+Restart Pi or use `/reload`, then the harness can call the `layagrep` tool. Use
+`layagrep harness install pi --global` to make it available in all Pi projects. The
+matching `uninstall` command removes it. Other harnesses can use the stdio MCP command
+`layagrep mcp` or consume `layagrep search --json` directly; see the README for the
+tool schema and configuration example.
+
 If port 8000 is already in use, select another port during setup:
 
 ```bash

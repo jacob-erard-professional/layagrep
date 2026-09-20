@@ -74,6 +74,16 @@ test('the documented command forms parse', () => {
 
   const cache = expectCommand(['cache', 'clear', '--config', 'config.json']);
   assert.deepEqual(cache.command, { kind: 'cache-clear', config: 'config.json' });
+
+  assert.deepEqual(expectCommand(['harness', 'install', 'pi']).command, {
+    kind: 'harness-pi', action: 'install', global: false,
+  });
+  assert.deepEqual(expectCommand(['harness', 'status', 'pi', '--global']).command, {
+    kind: 'harness-pi', action: 'status', global: true,
+  });
+  assert.deepEqual(expectCommand(['harness', 'uninstall', 'pi', '--root', 'project']).command, {
+    kind: 'harness-pi', action: 'uninstall', root: 'project', global: false,
+  });
 });
 
 test('setup defaults to the current directory and validates its port', () => {
@@ -159,6 +169,7 @@ test('options that do not belong to a command are refused', () => {
   assert.match(expectError(['mcp', '--config', 'config.json', '--json']), /--json/);
   assert.match(expectError(['doctor', '--config', 'config.json', '--query', 'q']), /--query/);
   assert.match(expectError(['inspect', '--config', 'config.json', '--max-context-tokens', '2000']), /--max-context-tokens/);
+  assert.match(expectError(['harness', 'install', 'pi', '--global', '--root', '.']), /either/i);
 });
 
 test('unknown options and missing values are refused, never thrown', () => {
@@ -167,6 +178,9 @@ test('unknown options and missing values are refused, never thrown', () => {
   assert.match(expectError(['search', '--config', 'config.json', '--query']), /--query/);
   assert.match(expectError(['cache', '--config', 'config.json']), /cache/i);
   assert.match(expectError(['cache', 'wipe', '--config', 'config.json']), /wipe/);
+  assert.match(expectError(['harness', 'install']), /pi/i);
+  assert.match(expectError(['harness', 'launch', 'pi']), /action/i);
+  assert.match(expectError(['harness', 'install', 'other']), /pi/i);
 });
 
 test('parsing has no side effect on the filesystem or the environment', () => {

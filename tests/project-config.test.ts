@@ -84,7 +84,7 @@ test('the package exposes one executable entry point built from src/cli.ts', () 
   assert.equal(manifest.type, 'module');
   assert.deepEqual(Object.keys(manifest.bin), ['layagrep']);
   assert.equal(manifest.bin['layagrep'], 'dist/cli.js');
-  assert.deepEqual(manifest.files, ['dist', 'runtime']);
+  assert.deepEqual(manifest.files, ['dist', 'integrations', 'runtime']);
 
   const buildConfig: { compilerOptions: { outDir: string; rootDir: string } } = JSON.parse(
     readFileSync(join(repoRoot, 'tsconfig.build.json'), 'utf8'),

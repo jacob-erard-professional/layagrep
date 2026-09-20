@@ -23,6 +23,7 @@ export type CliCommand =
   | { readonly kind: 'inspect'; readonly config?: string; readonly scope: readonly string[]; readonly json: boolean }
   | { readonly kind: 'doctor'; readonly config?: string }
   | { readonly kind: 'mcp'; readonly config?: string }
+  | { readonly kind: 'harness-pi'; readonly action: 'install' | 'status' | 'uninstall'; readonly root?: string; readonly global: boolean }
   | { readonly kind: 'cache-clear'; readonly config?: string };
 
 export type CliParseResult =
@@ -62,10 +63,13 @@ const ALLOWED_OPTIONS: Record<string, readonly string[]> = {
   inspect: ['--config', '--scope', '--json'],
   doctor: ['--config'],
   mcp: ['--config'],
+  'harness install pi': ['--root', '--global'],
+  'harness status pi': ['--root', '--global'],
+  'harness uninstall pi': ['--root', '--global'],
   'cache clear': ['--config'],
 };
 
-const COMMANDS: readonly string[] = ['setup', 'start', 'stop', 'restart', 'status', 'logs', 'search', 'inspect', 'doctor', 'mcp', 'cache'];
+const COMMANDS: readonly string[] = ['setup', 'start', 'stop', 'restart', 'status', 'logs', 'search', 'inspect', 'doctor', 'mcp', 'harness', 'cache'];
 
 /**
  * Early refusal of a scope entry the contract would reject later.
@@ -267,6 +271,17 @@ export function parseCliArguments(
       return refuse(`unknown subcommand '${subcommand}' for 'cache'; only 'cache clear' exists`);
     }
     optionStart = 2;
+  } else if (command === 'harness') {
+    subcommand = argv[1];
+    const harness = argv[2];
+    if (!['install', 'status', 'uninstall'].includes(subcommand ?? '')) {
+      return refuse("command 'harness' needs an action: install, status, or uninstall");
+    }
+    if (harness !== 'pi') {
+      return refuse("the supported harness is 'pi'");
+    }
+    subcommand = `${subcommand} pi`;
+    optionStart = 3;
   }
 
   const key = subcommand === undefined ? command : `${command} ${subcommand}`;
@@ -285,6 +300,13 @@ export function parseCliArguments(
       return refuse("option '--port' must be an integer from 1 to 65535");
     }
     return { kind: 'command', command: { kind: 'setup', root: state.root ?? '.', port } };
+  }
+  if (command === 'harness') {
+    if (state.global && state.root !== undefined) {
+      return refuse("use either '--global' or '--root', not both");
+    }
+    const action = subcommand?.split(' ')[0] as 'install' | 'status' | 'uninstall';
+    return { kind: 'command', command: { kind: 'harness-pi', action, ...(state.root === undefined ? {} : { root: state.root }), global: state.global } };
   }
   if (['start', 'stop', 'restart', 'status'].includes(command)) {
     const kind = command as 'start' | 'stop' | 'restart' | 'status';

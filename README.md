@@ -81,7 +81,48 @@ layagrep cache clear
 `.gitignore` and `.layagrepignore` are respected. `.layagrep/` contains its own
 `.gitignore`, so the downloaded runtime and model do not pollute repository status.
 
-## MCP
+## Harness tools
+
+### Pi CLI
+
+LayaGrep ships a native Pi extension that registers a read-only `layagrep` tool. Install
+it for the current project after running `setup` and `start`:
+
+```bash
+layagrep harness install pi
+layagrep harness status pi
+pi
+```
+
+In Pi, ask the agent to use `layagrep` for a behavior-oriented query such as “find where
+runtime processes are stopped.” The tool accepts `query`, optional repository-relative
+`path`, optional `max_context_tokens`, and optional `allow_partial`. Restart Pi after
+installation, or run `/reload` in an existing session.
+
+Install the tool for every Pi project instead:
+
+```bash
+layagrep harness install pi --global
+layagrep harness status pi --global
+```
+
+Remove either managed installation with `layagrep harness uninstall pi` or
+`layagrep harness uninstall pi --global`. Project installation writes only
+`.pi/extensions/layagrep.ts`; global installation writes only
+`$PI_CODING_AGENT_DIR/extensions/layagrep.ts` or, when that variable is unset,
+`~/.pi/agent/extensions/layagrep.ts`. The installer refuses to overwrite or remove a
+same-named file it does not recognize as LayaGrep-managed.
+
+To test the versioned extension without installing it:
+
+```bash
+pi --extension ./integrations/pi/layagrep.ts
+```
+
+Set `LAYAGREP_BIN` to an absolute executable path when `layagrep` is not on the harness
+process's `PATH`.
+
+### MCP and other harnesses
 
 LayaGrep exposes `semantic_search_code` over stdio. After `setup` and `start`:
 
@@ -94,6 +135,12 @@ tool_timeout_sec = 360
 
 Start the MCP process from the repository root, or pass
 `--config /absolute/repo/.layagrep/config.json`.
+
+For any harness with MCP support, register `layagrep` as the command and `mcp` as its
+single argument, set the working directory to the repository root, and allow at least
+360 seconds per call. Harnesses without Pi-extension or MCP support can invoke
+`layagrep search --query "..." --json`; exit code 0 is complete evidence and exit code
+3 is usable partial evidence.
 
 ## Architecture and limits
 

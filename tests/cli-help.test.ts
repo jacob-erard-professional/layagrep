@@ -9,7 +9,7 @@ import { commandHelp, globalHelp, documentedCommands } from '../src/cli-help.ts'
  * The same rule as LG-001 applies: nothing is presented as available that cannot run.
  */
 test('every documented command has a help page', () => {
-  assert.deepEqual([...documentedCommands()].sort(), ['cache clear', 'doctor', 'inspect', 'logs', 'mcp', 'restart', 'search', 'setup', 'start', 'status', 'stop']);
+  assert.deepEqual([...documentedCommands()].sort(), ['cache clear', 'doctor', 'harness install pi', 'harness status pi', 'harness uninstall pi', 'inspect', 'logs', 'mcp', 'restart', 'search', 'setup', 'start', 'status', 'stop']);
   for (const command of documentedCommands()) {
     const help = commandHelp(command);
     assert.ok(help !== undefined, `${command} has no help`);

@@ -103,6 +103,8 @@ test('the packed artifact installs into a clean prefix and runs there', { timeou
   const shipped = readdirSync(packageRoot).sort();
   assert.ok(shipped.includes('dist'), 'the artifact ships the build output');
   assert.ok(shipped.includes('runtime'), 'the artifact ships the pinned local Laya runtime');
+  assert.ok(shipped.includes('integrations'), 'the artifact ships harness integrations');
+  assert.equal(existsSync(join(packageRoot, 'integrations', 'pi', 'layagrep.ts')), true, 'the artifact ships the Pi tool');
   for (const asset of ['pyproject.toml', 'uv.lock', 'server.py']) {
     assert.equal(existsSync(join(packageRoot, 'runtime', asset)), true, `the artifact must ship runtime/${asset}`);
   }

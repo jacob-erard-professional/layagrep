@@ -28,6 +28,7 @@ import { SearchEngine, createSearchEngine } from './engine.ts';
 import { ScoreCache } from './evaluation/cache.ts';
 import { inspectScope, renderInspection } from './inspect.ts';
 import { discoverProjectConfiguration } from './init.ts';
+import { managePiHarness } from './harness.ts';
 import { runMcpServer } from './mcp.ts';
 import {
   platformSummary, readRuntimeLog, runtimePaths, runtimeStatus, setupRuntime, startRuntime, stopRuntime,
@@ -110,6 +111,33 @@ export async function executeCommand(
       return runCacheClear(command, io, deps);
     case 'mcp':
       return runMcp(command, io, deps);
+    case 'harness-pi':
+      return runHarnessPi(command, io, deps);
+  }
+}
+
+function runHarnessPi(command: Extract<CliCommand, { kind: 'harness-pi' }>, io: CliIo, deps: CommandDependencies): number {
+  try {
+    const result = managePiHarness({
+      action: command.action,
+      cwd: deps.cwd ?? process.cwd(),
+      ...(command.root === undefined ? {} : { root: command.root }),
+      global: command.global,
+      env: deps.env ?? process.env,
+    });
+    const scope = command.global ? 'global' : 'project';
+    if (result.state === 'installed') {
+      io.out(`Pi harness: installed (${scope}) at ${result.path}${result.changed ? '' : ' — already current'}`);
+      if (result.changed) io.out('next: start or reload Pi, then ask it to use the layagrep tool');
+    } else if (result.state === 'removed') {
+      io.out(`Pi harness: removed ${result.path}`);
+    } else {
+      io.out(`Pi harness: not installed at ${result.path}`);
+    }
+    return CLI_EXIT_CODES.complete;
+  } catch (cause) {
+    io.err(`layagrep: Pi harness ${command.action} failed: ${cause instanceof Error ? cause.message : 'unknown failure'}`);
+    return CLI_EXIT_CODES.error;
   }
 }
 

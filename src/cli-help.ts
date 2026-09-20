@@ -12,6 +12,9 @@ const COMMAND_SUMMARY: Record<string, string> = {
   inspect: 'Report eligible scope, exclusions and estimated work without running inference.',
   search: 'Return original excerpts that answer a behavior question, inside the response budget.',
   mcp: 'Serve semantic_search_code over MCP stdio (one repository per process).',
+  'harness install pi': 'Install the LayaGrep tool into Pi for this project or globally.',
+  'harness status pi': 'Report whether the LayaGrep Pi tool is installed.',
+  'harness uninstall pi': 'Remove the managed LayaGrep tool from Pi.',
   'cache clear': 'Remove recognized evaluations from the repository-local score cache.',
 };
 
@@ -27,6 +30,7 @@ const OPTION_TEXT: Record<string, string> = {
   '--max-context-tokens': '--max-context-tokens <n>   response budget (min 1,024)',
   '--allow-partial': '--allow-partial            permit an explicitly partial scan',
   '--json': '--json                     machine-readable JSON output',
+  '--global': '--global                   use Pi\'s global extension directory',
 };
 
 const COMMAND_USAGE: Record<string, string> = {
@@ -40,11 +44,14 @@ const COMMAND_USAGE: Record<string, string> = {
   inspect: 'layagrep inspect [--config <path>] [--scope <path>]... [--json]',
   doctor: 'layagrep doctor [--config <path>]',
   mcp: 'layagrep mcp [--config <path>]',
+  'harness install pi': 'layagrep harness install pi [--root <path> | --global]',
+  'harness status pi': 'layagrep harness status pi [--root <path> | --global]',
+  'harness uninstall pi': 'layagrep harness uninstall pi [--root <path> | --global]',
   'cache clear': 'layagrep cache clear [--config <path>]',
 };
 
 export function documentedCommands(): readonly string[] {
-  return ['setup', 'start', 'stop', 'restart', 'status', 'logs', 'search', 'inspect', 'doctor', 'mcp', 'cache clear'];
+  return ['setup', 'start', 'stop', 'restart', 'status', 'logs', 'search', 'inspect', 'doctor', 'mcp', 'harness install pi', 'harness status pi', 'harness uninstall pi', 'cache clear'];
 }
 
 export function commandHelp(command: string): string | undefined {
@@ -55,6 +62,7 @@ export function commandHelp(command: string): string | undefined {
   lines.push('  -h, --help                 show this page and exit 0', '');
   if (command === 'setup') lines.push('setup downloads the pinned runtime and model into .layagrep/; it does not start the server.');
   else if (command === 'search' || command === 'mcp') lines.push('source excerpts are sent only to the configured loopback Laya server.');
+  else if (command.startsWith('harness ')) lines.push('project installs use .pi/extensions; --global uses PI_CODING_AGENT_DIR or ~/.pi/agent/extensions.');
   else lines.push("runtime and cache operations stay inside this repository's .layagrep/ directory.");
   lines.push('', 'exit codes: 0 complete, 2 rejected, 3 partial, 4 runtime failure, 130 interrupted.');
   return lines.join('\n');
